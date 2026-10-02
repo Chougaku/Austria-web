@@ -1,0 +1,556 @@
+:root {
+  /* 歐式旅券：象牙色護照紙當底，奧地利紅是唯一主聲音，巴伐利亞深藍做深色錨點，
+     阿爾卑斯杉綠＝完成，申布倫金＝收藏高光。文字色在紙底與卡片底都實測 ≥4.5:1。 */
+  --paper: #F3EFE6; --card: #FCFAF5; --ink: #22201C;
+  --red: #C8102E; --red-lt: #DA3349; --navy: #1E355C;
+  --green: #2D6A4F; --gold: #E5A93A;
+  --brown: #685F50; --brown-lt: #736A5B; --brown-dk: #514A3E;
+  --line: rgba(34, 32, 28, .14); --line-dark: rgba(34, 32, 28, .25);
+  --water: #7FA6C4; --lake: #BCD3E3;
+  /* 拉丁字（數字、德文標籤）走 Bodoni Moda，中文自動落到 Noto Serif TC。 */
+  --serif: 'Bodoni Moda', 'Noto Serif TC', serif;
+}
+* { box-sizing: border-box; }
+/* 地圖與每日行程不到一屏、沒有垂直捲軸，其餘分頁都有——桌機視口寬度因此差一個捲軸寬，
+   切過去時頁首右上角（出發倒數、登入編輯）會橫跳 15px。永遠留著捲軸槽讓每頁等寬。
+   手機／Mac 的覆蓋式捲軸本來就不佔寬，不受影響。 */
+html { scrollbar-gutter: stable; }
+body {
+  margin: 0; color: var(--ink); background: var(--paper);
+  position: relative;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+body::before {
+  content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+  background-image: repeating-linear-gradient(0deg, rgba(34,32,28,.018) 0px, rgba(34,32,28,.018) 1px, transparent 1px, transparent 3px);
+  opacity: 0.85;
+}
+input::placeholder { color: var(--brown-lt); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.fade-up { animation: fadeUp .2s ease both; }
+@keyframes pageIn { from { opacity: 0; } to { opacity: 1; } }
+.page-enter { animation: pageIn .15s ease-out both; }
+.reveal { opacity: 0; transform: translateY(8px); }
+.reveal--in { opacity: 1; transform: none; transition: opacity .25s ease, transform .25s ease-out; transition-delay: var(--reveal-delay, 0s); }
+.area-rail.reveal { opacity: 1; transform: none; }
+@keyframes lineGrow {
+  0% { transform: scaleY(0); }
+  100% { transform: scaleY(1); }
+}
+@keyframes dotPop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.area-rail-line {
+  transform: scaleY(0); transform-origin: top;
+}
+.area-rail-dot {
+  transform: scale(0);
+}
+.area-rail.reveal--in .area-rail-line {
+  animation: lineGrow .3s ease-out var(--rail-delay, 0s) both;
+}
+.area-rail.reveal--in .area-rail-dot {
+  animation: dotPop .25s ease-out calc(var(--rail-delay, 0s) + .08s) both;
+}
+.serif { font-family: var(--serif); }
+.muted { color: var(--brown); }
+.label-en { font-size: 12px; letter-spacing: .25em; color: var(--brown); font-weight: 600; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; contain: layout style; }
+.dash-top { border-top: 1px dashed rgba(34,32,28,.22); }
+.dash-bottom { border-bottom: 1px dashed var(--line); }
+.btn-plain { background: none; border: none; cursor: pointer; font-family: inherit; text-align: left; padding: 0; color: inherit; }
+.chip {
+  background: transparent; color: var(--ink); border: 1px solid rgba(34,32,28,.3);
+  border-radius: 999px; padding: 7px 16px; font-size: 13px; font-weight: 500;
+  letter-spacing: .05em; cursor: pointer; font-family: 'Noto Sans TC', sans-serif;
+}
+.chip--on { background: var(--ink); color: #F8F5EE; border-color: var(--ink); font-weight: 600; }
+.chip--red.chip--on { background: var(--red); border-color: var(--red); }
+/* 評分郵戳：雙圈（外框＋內圈）＝郵局日戳，數字走 Bodoni。 */
+.stamp {
+  flex: none; width: 42px; height: 42px; border-radius: 50%;
+  border: 1.6px solid var(--red); color: var(--red);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif); font-size: 15px; font-weight: 800;
+  transform: rotate(-6deg); background: rgba(200,16,46,.04);
+  box-shadow: inset 0 0 0 2.5px var(--card), inset 0 0 0 3.5px rgba(200,16,46,.5);
+  position: relative;
+}
+.stamp::after {
+  content: ''; position: absolute; inset: -4px; border-radius: 50%;
+  background: var(--red); pointer-events: none; opacity: 0; transform: scale(0.8);
+}
+.stamp--off { border-color: var(--line-dark); color: var(--brown-lt); font-size: 13px; background: transparent; box-shadow: inset 0 0 0 2.5px var(--card), inset 0 0 0 3.5px var(--line); }
+.stamp--off::after, .stamp--off.stamp--pop::after { display: none; }
+@keyframes sealPulse {
+  0% { transform: rotate(-6deg) scale(1); opacity: .55; }
+  50% { transform: rotate(-2deg) scale(1.08); opacity: 1; }
+  100% { transform: rotate(-6deg) scale(1); opacity: .55; }
+}
+.seal-loader {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 1.4px solid var(--red); color: var(--red);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; background: rgba(200,16,46,.05);
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 2.8px rgba(200,16,46,.45);
+  animation: sealPulse 1.1s ease-in-out infinite;
+}
+.heart { flex: none; background: none; border: none; cursor: pointer; font-size: 20px; line-height: 1; padding: 12px; margin: -10px; color: rgba(34,32,28,.35); }
+.heart--on { color: var(--red); }
+@keyframes heartPop { 0% { transform: scale(1); } 40% { transform: scale(1.45); } 70% { transform: scale(.92); } 100% { transform: scale(1); } }
+.heart--pop { animation: heartPop .35s ease; }
+@keyframes stampIn {
+  0% { opacity: 0; transform: rotate(-6deg) scale(1.2); }
+  100% { opacity: 1; transform: rotate(-6deg) scale(1); }
+}
+@keyframes stampBleed {
+  0% { transform: scale(0.8); opacity: 0.4; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+.stamp--pop { animation: stampIn .28s ease-out both; }
+.stamp--pop::after { animation: stampBleed .35s ease-out both; }
+@keyframes countFloat {
+  0% { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.cd-num-enter {
+  animation: countFloat .32s ease-out .08s both;
+}
+.ov-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 16px; }
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(295px, 1fr)); gap: 12px; }
+.cards-grid > * { contain: layout style; }
+.banner-dark { background: var(--navy); color: #F4F0E7; border-radius: 10px; padding: 18px 22px; }
+a { color: var(--red); }
+.md-body { font-size: 13.5px; line-height: 1.75; }
+.md-body h2 { font-family: var(--serif); font-size: 16px; border-left: 3px solid var(--red); padding-left: 10px; margin: 18px 0 8px; }
+.md-body table { border-collapse: collapse; width: 100%; margin: 8px 0; }
+.md-body th, .md-body td { border: 1px solid var(--line); padding: 6px 10px; font-size: 13px; text-align: left; }
+.md-body th { background: rgba(30,53,92,.06); font-weight: 700; }
+.md-body code { background: rgba(34,32,28,.06); border-radius: 4px; padding: 1px 5px; }
+.md-body ul { padding-left: 20px; margin: 6px 0; }
+.md-body img { max-width: 100%; height: auto; display: block; margin: 12px 0; border-radius: 8px; border: 1px solid var(--line); }
+.search-hit { background: rgba(229,169,58,.28); border-radius: 3px; padding: 0 1px; color: inherit; }
+.search-field {
+  width: 100%; background: var(--card); border: 1px solid var(--line-dark);
+  border-radius: 8px; padding: 10px 34px 10px 14px; font-size: 14px;
+  font-family: inherit; color: var(--ink);
+}
+@media (max-width: 640px) { .search-field { font-size: 16px; } }
+.slot-edit-row {
+  display: grid; grid-template-columns: 80px 1fr 1fr auto; gap: 8px; align-items: center;
+  border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: rgba(255,255,255,.4);
+}
+/* 手機：時段＋標題同列，備註與控制列各自佔滿——比原本 4 欄全寬直排省一列。 */
+@media (max-width: 640px) {
+  .slot-edit-row { grid-template-columns: 76px minmax(0, 1fr); gap: 6px; padding: 9px 10px; }
+  .slot-edit-row > :nth-child(3), .slot-edit-row > :nth-child(4) { grid-column: 1 / -1; }
+}
+.hscroll { display: flex; gap: 8px; overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+.hscroll::-webkit-scrollbar { display: none; }
+.hscroll > * { flex: none; }
+.chip { min-height: 36px; }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+.card-tap { transition: transform .12s ease, box-shadow .12s ease; }
+.card-tap:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(34,32,28,.16); }
+.card-tap:active { transform: scale(.98); }
+.guide-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .2s ease; }
+.guide-body--open { grid-template-rows: 1fr; }
+.guide-body > div { min-height: 0; overflow: hidden; }
+/* ── Header ───────────────────────────────────────────────────────────────
+   桌機維持兩列（品牌列＋分頁列）；手機把品牌列壓成單行：隱藏英文副標、日期副標與
+   「出發倒數」字樣，logo 與倒數縮一階。分頁列永遠獨佔整行，不再與登入鈕搶寬度。 */
+.hdr-row { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.hdr-top { padding: 10px 20px 0; }
+.hdr-nav { padding: 8px 20px 10px; }
+/* 火漆印：微不規則的圓、壓出一圈內環，字用中文襯線。 */
+.hdr-logo {
+  flex: none; width: 44px; height: 44px; background: var(--red); color: #F8F5EE;
+  display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800;
+  font-family: 'Noto Serif TC', serif;
+  border-radius: 47% 53% 51% 49% / 52% 47% 53% 48%;
+  box-shadow: 2px 2px 0 rgba(34,32,28,.18), inset 0 0 0 3px rgba(255,255,255,.14), inset 0 0 0 4.5px rgba(120,8,26,.35);
+  transform: rotate(-6deg);
+}
+.hdr-title { font-size: 21px; font-weight: 700; letter-spacing: .12em; }
+.hdr-sub { font-size: 12px; color: var(--brown-dk); letter-spacing: .06em; }
+.hdr-cd {
+  flex: none; display: flex; align-items: baseline; gap: 7px; border: 1.5px solid var(--red);
+  color: var(--red); border-radius: 999px; padding: 6px 16px; background: rgba(200,16,46,.05);
+}
+.hdr-cd-num { font-size: 22px; font-weight: 800; line-height: 1; }
+@media (max-width: 640px) {
+  .hdr-top { padding: 8px 14px 0; gap: 9px; }
+  .hdr-nav { padding: 7px 14px 8px; }
+  .hdr-logo { width: 32px; height: 32px; font-size: 16px; box-shadow: 1.5px 1.5px 0 rgba(34,32,28,.18), inset 0 0 0 2px rgba(255,255,255,.14), inset 0 0 0 3.2px rgba(120,8,26,.35); }
+  .hdr-title { font-size: 15px; letter-spacing: .08em; }
+  .hdr-title .label-en, .hdr-sub { display: none; }
+  .hdr-cd { padding: 3px 10px; border-width: 1px; gap: 4px; }
+  .hdr-cd-label { display: none; }
+  .hdr-cd-num { font-size: 17px; }
+}
+
+/* ── 每日行程 ─────────────────────────────────────────────────────────────
+   手機時日期列獨佔整行（原本只剩 123px，5 天看不到 2 天），檢視切換掉到第二行。 */
+.plan-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.plan-days { flex: 1; min-width: 0; }
+.plan-views { display: flex; border: 1px solid var(--line-dark); border-radius: 8px; overflow: hidden; flex: none; }
+.plan-day { padding: 6px 12px; }
+.plan-day-dow { opacity: .75; }
+@media (max-width: 640px) {
+  .plan-days { flex: 1 0 100%; gap: 6px; }
+  .plan-views { margin-left: auto; }
+  .plan-day-dow { display: none; }
+  /* 5 天要在 375px 內一次排完，不靠橫捲。 */
+  .plan-day { padding: 6px 9px; }
+}
+/* 時段：時間收成標題前的小膠囊，去掉左側 52px 時間欄與軸線，靠虛線分隔而非卡中卡。
+   美食／景點整列鋪一層極淡的色底，滿版貼到卡片內距邊緣——色帶不收圓角就不會變成卡中卡，
+   虛線分隔照舊，讀起來像旅行筆記上用色筆整行畫過。 */
+.plan-slot {
+  /* --pad-x 只定義在 .plan-card 上，帶 fallback 免得日後在別處重用時 var() 解不出來、
+     整條 margin/padding 宣告作廢變成 0。 */
+  margin: 0 calc(var(--pad-x, 18px) * -1);
+  padding: 9px var(--pad-x, 18px) 9px calc(var(--pad-x, 18px) - 3px);
+  border-left: 3px solid var(--kind, transparent);
+  background: var(--kind-bg, transparent);
+}
+.plan-slot + .plan-slot { border-top: 1px dashed rgba(34,32,28,.16); }
+.plan-slot-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+/* 地圖連結推到右緣自成一行——標題長到換行時它跟著掉下來，不會把標題擠窄。 */
+.plan-map { flex: none; margin-left: auto; }
+/* 這頁是站在街頭單手用的，一列列 22px 的小膠囊按不準。
+   視覺尺寸不動，只把命中區撐開到 36px 上下（同收藏愛心的做法）。 */
+.plan-map a { position: relative; }
+.plan-map a::after { content: ''; position: absolute; inset: -8px -6px; }
+/* 只標美食（奧地利紅）與景點（深藍）：每列都有記號等於沒有記號，購物／交通／住宿一律中性。
+   底色壓在 5% 上下，色相看得出來但不吵；--kind 由類型 class 設定，方章與側鋪共用。 */
+.plan-slot--food { --kind: var(--red); --kind-bg: rgba(200, 16, 46, .055); }
+.plan-slot--sight { --kind: var(--navy); --kind-bg: rgba(30, 53, 92, .05); }
+.plan-slot--pending { --kind: transparent; }
+.plan-kind {
+  flex: none; align-self: center;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 19px; height: 19px; border-radius: 4px;
+  font-family: var(--serif); font-size: 11.5px; font-weight: 700; line-height: 1;
+  color: var(--kind, var(--brown-dk)); border: 1px solid var(--kind, var(--line-dark));
+  background: var(--kind-bg, transparent); transform: rotate(-4deg);
+}
+.plan-legend {
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  padding: 8px 0 2px; font-size: 11px; color: var(--brown-dk);
+}
+.plan-legend-item { display: inline-flex; align-items: center; gap: 5px; }
+/* 卡片檢視空間更擠，類型只留一顆色點。 */
+.plan-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 999px;
+  margin-right: 6px; vertical-align: middle;
+}
+.plan-time {
+  flex: none; font-size: 10.5px; font-weight: 600; letter-spacing: .06em; color: var(--brown-dk);
+  border: 1px solid var(--line-dark); border-radius: 999px; padding: 2px 8px; white-space: nowrap;
+}
+.plan-slot--pending .plan-time { border-style: dashed; color: var(--brown-lt); }
+/* flex: 1 1 0 + min-width: 0＝長標題在自己的框內折行，而不是整塊被擠到下一列
+   （擠下去的話一個時段會佔掉三行，手機一頁看不到幾個時段）。 */
+.plan-title { flex: 1 1 0; min-width: 0; font-family: var(--serif); font-size: 14.5px; font-weight: 700; }
+.plan-slot--pending .plan-title { color: var(--brown-lt); }
+.plan-note { font-size: 12px; line-height: 1.55; color: var(--brown-dk); margin-top: 2px; }
+/* --pad-x 給時段色帶做滿版用的負 margin，必須跟卡片左右內距一致。 */
+.plan-card { --pad-x: 18px; padding: 16px var(--pad-x); }
+@media (max-width: 640px) { .plan-card { --pad-x: 14px; padding: 13px var(--pad-x); } }
+
+/* 提交結果橫幅：成功走綠（DESIGN.md 綠＝done），失敗走奧地利紅。用色底＋左側粗邊，
+   是因為它出現在一長串編輯欄位的最上方，弱對比小字會被整個略過。 */
+.plan-msg {
+  display: flex; align-items: baseline; gap: 8px;
+  margin-top: 12px; padding: 9px 12px; border-radius: 8px;
+  font-size: 13px; line-height: 1.5; font-weight: 600;
+}
+.plan-msg-mark { flex: none; font-family: var(--serif); font-weight: 800; font-size: 12px; }
+.plan-msg--ok { background: rgba(45,106,79,.10); border-left: 3px solid var(--green); color: var(--green); }
+.plan-msg--err { background: rgba(200,16,46,.10); border-left: 3px solid var(--red); color: var(--red); }
+
+/* 分頁切換刻意不用 View Transitions：轉場 group 偽元素的預設 250ms 幾何 morph 只覆寫
+   old/new 關不掉，sticky header 會被拉出文件流做位移補間，長短差很多的頁面
+   （首頁 910px vs 餐廳 3800px）還會整頁縱向拉伸。切換靠 .page-enter 淡入即可。 */
+.page-main { max-width: 1120px; margin: 0 auto; padding: 24px 20px 64px; }
+@media (max-width: 640px) { .page-main { padding: 14px 14px 48px; } }
+
+/* ── 總覽：路線圖舞台 ─────────────────────────────────────────────────────
+   一張手繪感的路線圖（RouteHero）當中央舞台：旅券票根與行程摘要釘在圖上方的空白，
+   路線與城市郵戳在下半部。層次靠卡片實底＋蓋章硬影（非柔散大陰影），維持 Flat-Paper Rule。
+   ≤1000px 卡片回到流式排版、路線圖排最前；≤640px 路線圖換成蛇形版，字才看得清楚。 */
+.ov-page { display: flex; flex-direction: column; gap: 18px; }
+.ov-greet-title { font-size: 26px; font-weight: 800; letter-spacing: .04em; }
+.ov-greet-sub { font-size: 13px; color: var(--brown-dk); margin-top: 3px; }
+.ov-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 14px; padding: 15px 17px; }
+.ov-summary-k { font-size: 10.5px; letter-spacing: .18em; color: rgba(244, 240, 231, .66); }
+/* 日期不折行；季節這類長字串允許折行，否則會被卡片邊緣切掉。 */
+.ov-summary-v { font-family: var(--serif); font-size: 16px; font-weight: 700; margin-top: 3px; line-height: 1.3; overflow-wrap: anywhere; }
+
+.ov-stage { position: relative; }
+.ov-float { box-shadow: 3px 3px 0 rgba(34, 32, 28, .09); }
+.ov-pin { position: absolute; z-index: 1; }
+/* 兩張卡釘在地圖上方左右兩角——路線與郵戳都在下半部，這兩塊是空的。 */
+.ov-pin--pass { left: 1.5%; top: 3%; width: 31%; }
+.ov-pin--sum { right: 1.5%; top: 3%; width: 27%; }
+.ov-stage-cap {
+  position: absolute; z-index: 1; left: 50%; bottom: -4px; transform: translateX(-50%);
+  font-size: 11px; letter-spacing: .16em; color: var(--brown); white-space: nowrap;
+}
+
+/* 錯落：每張卡各歪一點、上下不對齊、寬度不齊，像隨手夾在護照裡的票券與便條。
+   hover 時轉正並抬起，摸得到「紙被扶正」的手感。 */
+.ov-tilt { transition: transform .18s ease, box-shadow .18s ease; }
+.ov-tilt--a { transform: rotate(-1.1deg); }
+.ov-tilt--b { transform: rotate(.9deg); }
+.ov-tilt--c { transform: rotate(.7deg); }
+.ov-tilt--d { transform: rotate(-.8deg); }
+.ov-tilt--e { transform: rotate(-.35deg); }
+.ov-tilt:hover { transform: rotate(0deg) translateY(-3px); box-shadow: 4px 5px 0 rgba(34, 32, 28, .12); }
+
+/* 旅券票根卡：左本票、右票根（虛線切口＋倒數大數字） */
+.ov-pass { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 0; overflow: hidden; }
+.ov-pass-main { padding: 17px 18px 15px; min-width: 0; }
+.ov-pass-stub {
+  border-left: 1.5px dashed var(--line-dark); background: rgba(200, 16, 46, .05);
+  padding: 14px 15px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.ov-pass-meta { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.ov-stub-label {
+  font-size: 9px; letter-spacing: .2em; margin-top: 8px; color: var(--brown-lt);
+  writing-mode: vertical-rl; white-space: nowrap;
+}
+
+.ov-quick { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); border-radius: 10px; overflow: hidden; }
+.ov-quick > button { background: var(--card); padding: 14px 15px; display: flex; flex-direction: column; gap: 3px; cursor: pointer; }
+.ov-mid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.ov-side { display: flex; flex-direction: column; gap: 14px; }
+.ov-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.ov-card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.ov-card-title { font-family: var(--serif); font-size: 18px; font-weight: 800; }
+
+/* 住宿：一城一列，左邊一枚小郵戳寫晚數。 */
+.stay-list { display: flex; flex-direction: column; margin-top: 6px; }
+.stay-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 4px 14px; align-items: center; padding: 11px 0; }
+.stay-row + .stay-row { border-top: 1px dashed var(--line); }
+.stay-mark {
+  width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--navy); color: var(--navy);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  box-shadow: inset 0 0 0 2.5px var(--card), inset 0 0 0 3.4px rgba(30, 53, 92, .45);
+  transform: rotate(-5deg);
+}
+.stay-mark b { font-family: var(--serif); font-size: 17px; font-weight: 800; }
+.stay-mark span { font-size: 9px; letter-spacing: .1em; margin-top: 1px; }
+.stay-city { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.stay-city b { font-family: var(--serif); font-size: 16px; font-weight: 800; }
+.stay-en { font-size: 10px; letter-spacing: .18em; color: var(--brown); }
+.stay-meta { font-size: 12px; color: var(--brown-dk); margin-top: 2px; }
+.stay-status { justify-self: end; text-align: right; }
+.badge {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .06em;
+  border-radius: 4px; padding: 2px 7px; white-space: nowrap;
+}
+.badge--done { color: var(--green); border: 1px solid var(--green); }
+.badge--todo { color: var(--brown-dk); border: 1px dashed var(--brown); }
+.badge--warn { color: var(--red); border: 1px solid rgba(200, 16, 46, .45); }
+
+/* 城市間移動：日期／方式／路段，一段一列。自駕走紅、火車走藍、飛機走茶。 */
+.leg-list { display: flex; flex-direction: column; margin-top: 6px; }
+.leg-row { display: grid; grid-template-columns: 40px 22px minmax(0, 1fr); gap: 2px 8px; align-items: baseline; padding: 8px 0; }
+.leg-row + .leg-row { border-top: 1px dashed var(--line); }
+.leg-date { font-family: var(--serif); font-size: 13px; font-weight: 700; color: var(--brown-dk); }
+.leg-mode { font-size: 14px; text-align: center; }
+.leg-route { font-size: 13.5px; font-weight: 700; }
+.leg-route small { font-size: 11px; font-weight: 600; letter-spacing: .06em; margin-left: 6px; }
+.leg-row--drive .leg-route small { color: var(--red); }
+.leg-row--train .leg-route small { color: var(--navy); }
+.leg-row--flight .leg-route small, .leg-row--other .leg-route small { color: var(--brown); }
+.leg-note { grid-column: 3; font-size: 12px; line-height: 1.55; color: var(--brown-dk); }
+
+@media (max-width: 1000px) {
+  /* 窄螢幕沒有可釘的空白：卡片回到流式排版，路線圖維持在最前 */
+  .ov-stage { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 12px; }
+  .ov-stage > .route-hero-wrap { grid-column: 1 / -1; order: -2; }
+  .ov-pin { position: static; width: auto; }
+  .ov-stage-cap { position: static; transform: none; grid-column: 1 / -1; order: -1; text-align: center; margin-top: -6px; }
+  .ov-mid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+  .ov-greet-title { font-size: 20px; }
+  .ov-summary { grid-template-columns: repeat(2, 1fr); gap: 10px 14px; padding: 13px 15px; width: 100%; }
+  .ov-summary-v { font-size: 14px; white-space: normal; }
+  /* 手機票根欄不必被垂直英文標籤撐高 */
+  .ov-stub-label { writing-mode: horizontal-tb; font-size: 8.5px; letter-spacing: .14em; margin-top: 10px; text-align: center; }
+  .ov-pass-stub { padding: 14px 12px; }
+  /* 窄螢幕不歪：卡片幾乎滿寬，旋轉會頂到邊 */
+  .ov-tilt, .ov-tilt--a, .ov-tilt--b, .ov-tilt--c, .ov-tilt--d, .ov-tilt--e { transform: none; }
+  .stay-row { grid-template-columns: 44px minmax(0, 1fr); }
+  .stay-status { grid-column: 2; justify-self: start; text-align: left; }
+}
+
+/* ── 路線圖（RouteHero）──────────────────────────────────────────────────
+   桌機是一張有河流、湖泊、國界、山的手繪地圖；手機換成蛇形路線（3＋3 站），
+   兩版都是同一套郵戳：外圈城市名、中間入住日期。 */
+.route-hero-wrap { position: relative; }
+.route-hero { display: block; width: 100%; height: auto; overflow: visible; }
+.route-hero--snake { display: none; }
+@media (max-width: 640px) {
+  .route-hero--map { display: none; }
+  .route-hero--snake { display: block; }
+}
+.rh-sheet { fill: var(--card); stroke: var(--line); }
+.rh-grid { stroke: rgba(34, 32, 28, .07); stroke-width: 1.2; stroke-dasharray: 2 7; fill: none; }
+.rh-mountain { fill: rgba(30, 53, 92, .07); }
+.rh-snow { fill: var(--card); }
+.rh-river { fill: none; stroke: var(--water); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: .55; }
+.rh-lake { fill: var(--lake); stroke: var(--water); stroke-width: 1; }
+.rh-border { fill: none; stroke: rgba(34, 32, 28, .3); stroke-width: 2; stroke-dasharray: 1 7; stroke-linecap: round; }
+.rh-country { font-family: var(--serif); font-size: 17px; font-weight: 600; letter-spacing: .42em; fill: rgba(34, 32, 28, .32); }
+.rh-route { fill: none; stroke-width: 5; stroke-linecap: round; }
+.rh-route--drive { stroke: var(--red); }
+.rh-route--train { stroke: var(--navy); stroke-dasharray: 2 11; stroke-width: 6; }
+.rh-route--flight, .rh-route--other, .rh-route--bus, .rh-route--ferry { stroke: var(--brown-lt); stroke-width: 2.5; stroke-dasharray: 3 9; }
+.rh-route-tag { font-family: 'Noto Sans TC', sans-serif; font-size: 17px; font-weight: 700; paint-order: stroke; stroke: var(--card); stroke-width: 6px; stroke-linejoin: round; }
+.rh-route-tag--drive { fill: var(--red); }
+.rh-route-tag--train { fill: var(--navy); }
+.rh-route-tag--flight, .rh-route-tag--other, .rh-route-tag--bus, .rh-route-tag--ferry { fill: var(--brown-dk); }
+.rh-pm-ring { fill: rgba(252, 250, 245, .94); stroke: var(--navy); stroke-width: 2.6; }
+.rh-pm-inner { fill: none; stroke: var(--navy); stroke-width: 1.1; }
+.rh-pm-text { font-family: var(--serif); font-size: 11.5px; font-weight: 700; letter-spacing: .16em; fill: var(--navy); }
+.rh-pm-date { font-family: var(--serif); font-size: 21px; font-weight: 800; fill: var(--navy); }
+.rh-pm-nights { font-family: 'Noto Sans TC', sans-serif; font-size: 12px; font-weight: 700; fill: var(--navy); }
+.rh-label { font-family: 'Noto Serif TC', serif; font-size: 27px; font-weight: 800; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 7px; stroke-linejoin: round; }
+.rh-legend { font-family: 'Noto Sans TC', sans-serif; font-size: 17px; fill: var(--brown-dk); }
+.rh-small { font-family: var(--serif); font-size: 15px; letter-spacing: .14em; fill: var(--brown); }
+.route-hero--snake .rh-label { font-size: 15px; stroke-width: 4px; }
+.route-hero--snake .rh-pm-text { font-size: 7.4px; letter-spacing: .12em; }
+.route-hero--snake .rh-pm-date { font-size: 13px; }
+.route-hero--snake .rh-pm-nights { font-size: 8px; }
+.route-hero--snake .rh-pm-ring { stroke-width: 1.8; }
+.route-hero--snake .rh-pm-inner { stroke-width: .8; }
+.route-hero--snake .rh-route { stroke-width: 3; }
+.route-hero--snake .rh-route--train { stroke-dasharray: 1.5 6.5; stroke-width: 3.6; }
+.route-hero--snake .rh-route-tag { font-size: 10.5px; stroke-width: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+  .fade-up, .page-enter { animation: none; }
+  .card-tap, .guide-body, .ov-tilt { transition: none; }
+  .reveal { opacity: 1; transform: none; }
+  .reveal--in { transition: none; }
+  .heart--pop, .stamp, .stamp--pop, .cd-num-enter { animation: none; }
+  .stamp--pop::after { animation: none; }
+  .area-rail-line, .area-rail-dot { transition: none !important; transform: none !important; animation: none !important; }
+  .seal-loader { animation: none; }
+}
+/* 地圖檢視：掛在區域卡片上的當天時段。 */
+.area-slots {
+  margin-top: 8px; padding-top: 7px; border-top: 1px dashed rgba(34,32,28,.16);
+  display: flex; flex-direction: column; gap: 3px;
+}
+
+/* ── 路線區域列（AreaRail）────────────────────────────────────────────────
+   一城一站沿著路線往下排，站與站之間的連線照移動方式畫：自駕實線紅、火車虛線藍、
+   飛機點線茶。城內分區排在站點卡片下方的小格裡。 */
+.area-rail { display: flex; flex-direction: column; }
+.area-rail-row { display: flex; gap: 14px; align-items: stretch; }
+.area-rail-track { flex: none; width: 22px; display: flex; flex-direction: column; align-items: center; }
+.area-rail-line { width: 3px; flex: 1; min-height: 8px; background: var(--red-lt); }
+.area-rail-line--top { flex: none; height: 22px; }
+.area-rail-line--none { background: transparent; }
+.area-rail-line--train { background: repeating-linear-gradient(to bottom, var(--navy) 0 7px, transparent 7px 12px); }
+.area-rail-line--flight, .area-rail-line--other, .area-rail-line--bus, .area-rail-line--ferry {
+  background: repeating-linear-gradient(to bottom, var(--brown-lt) 0 3px, transparent 3px 8px);
+}
+.area-rail-dot {
+  flex: none; width: 16px; height: 16px; border-radius: 50%;
+  border: 3px solid var(--red); background: var(--card);
+}
+.area-rail-dot--on { background: var(--red); }
+.area-rail-body { flex: 1; min-width: 0; padding: 6px 0; }
+.area-box {
+  padding: 12px 16px; border-radius: 8px;
+  border: 1px solid rgba(34,32,28,.12); background: rgba(255,255,255,.4);
+}
+.area-box--on { border-color: var(--red); background: rgba(200,16,46,.06); }
+.area-box-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.area-box-name { font-family: var(--serif); font-size: 16px; font-weight: 800; }
+.area-box-en { font-size: 10.5px; letter-spacing: .18em; color: var(--brown); }
+.area-box-pts { font-size: 12.5px; color: var(--brown-dk); margin-top: 2px; }
+.area-fav {
+  font-size: 11.5px; font-weight: 700; color: var(--red);
+  border: 1px solid rgba(200,16,46,.4); border-radius: 999px; padding: 1px 8px;
+}
+.area-subs { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-top: 8px; }
+.area-subs .area-box { padding: 9px 12px; background: rgba(255,255,255,.28); }
+.area-subs .area-box--on { background: rgba(200,16,46,.06); }
+.area-subs .area-box-name { font-size: 14px; }
+.area-subs .area-box-pts { font-size: 12px; }
+.area-leg { display: flex; gap: 14px; align-items: stretch; }
+.area-leg-text { padding: 7px 0 9px; font-size: 12px; color: var(--brown-dk); line-height: 1.5; }
+.area-leg-text b { font-weight: 700; letter-spacing: .04em; }
+.area-leg--drive .area-leg-text b { color: var(--red); }
+.area-leg--train .area-leg-text b { color: var(--navy); }
+
+/* ── 真地圖（Leaflet + OSM）─────────────────────────────────────────────
+   圖磚是外來的方形彩色影像，跟護照紙底色衝突——用 1px 界線＋圓角框住，
+   標記換成雙圈郵戳（名字長就拉成橢圓戳），讓它像夾在旅券裡的一張地圖。 */
+.trip-map {
+  border: 1px solid var(--line-dark); border-radius: 10px; overflow: hidden;
+  background: var(--card); z-index: 0;
+}
+.trip-map .leaflet-container { font-family: 'Noto Sans TC', sans-serif; background: var(--card); }
+.map-stamp {
+  display: flex; align-items: center; justify-content: center; position: relative;
+  border-radius: 999px; border: 1.6px solid var(--brown); color: var(--brown-dk);
+  background: rgba(252, 250, 245, .94);
+  box-shadow: 2px 2px 0 rgba(34, 32, 28, .18), inset 0 0 0 2px rgba(252, 250, 245, .94), inset 0 0 0 3px rgba(104, 95, 80, .4);
+  font-family: 'Noto Serif TC', serif; font-size: 11px; font-weight: 800; line-height: 1;
+  transform: rotate(-6deg); text-align: center; white-space: nowrap; padding: 0 6px; box-sizing: border-box;
+}
+.map-stamp--city { border-color: var(--navy); color: var(--navy); box-shadow: 2px 2px 0 rgba(34, 32, 28, .18), inset 0 0 0 2px rgba(252, 250, 245, .94), inset 0 0 0 3px rgba(30, 53, 92, .45); }
+.map-stamp--on {
+  border-color: var(--red); color: var(--red); font-size: 12.5px;
+  box-shadow: 2px 2px 0 rgba(34, 32, 28, .18), inset 0 0 0 2px rgba(252, 250, 245, .96), inset 0 0 0 3px rgba(200, 16, 46, .45);
+}
+.map-stamp-n {
+  position: absolute; right: -5px; top: -5px; font-style: normal;
+  min-width: 17px; height: 17px; border-radius: 999px;
+  background: var(--red); color: #F8F5EE; font-size: 10px; font-weight: 700; font-family: 'Noto Sans TC', sans-serif;
+  display: flex; align-items: center; justify-content: center; transform: rotate(6deg);
+}
+.route-line { fill: none; stroke-linecap: round; }
+.route-line--drive { stroke: var(--red); stroke-width: 4; stroke-opacity: .85; }
+.route-line--train { stroke: var(--navy); stroke-width: 4; stroke-dasharray: 2 9; stroke-opacity: .9; }
+.route-line--flight, .route-line--other, .route-line--bus, .route-line--ferry { stroke: var(--brown-lt); stroke-width: 2.5; stroke-dasharray: 3 8; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: var(--brown-dk); margin-top: 8px; align-items: center; }
+.map-legend i { display: inline-block; width: 24px; height: 0; vertical-align: middle; margin-right: 6px; border-top: 3px solid var(--red); }
+.map-legend i.train { border-top: 3px dotted var(--navy); }
+.leaflet-popup-content-wrapper { border-radius: 8px; }
+.leaflet-popup-content { font-size: 12.5px; margin: 10px 12px; }
+.map-pop-pts { color: var(--brown-dk); font-size: 11.5px; margin-top: 2px; }
+.map-pop-list { margin: 6px 0 0; padding-left: 16px; }
+.map-pop-list li { margin: 2px 0; }
+
+/* ── 每日行程：所在城市與換城標記 ───────────────────────────────────────── */
+.plan-day-mode { font-size: 10px; margin-left: 3px; }
+.plan-where { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--brown-dk); }
+.plan-leg {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700;
+  border-radius: 999px; padding: 3px 10px; border: 1px solid var(--line-dark); background: rgba(255,255,255,.5);
+}
+.plan-leg--drive { color: var(--red); border-color: rgba(200,16,46,.4); background: rgba(200,16,46,.05); }
+.plan-leg--train { color: var(--navy); border-color: rgba(30,53,92,.4); background: rgba(30,53,92,.05); }
+.plan-leg--flight { color: var(--brown-dk); }
+
+/* ── 交通頁：路段時間軸＋自駕／火車／市內三區 ──────────────────────────── */
+.trans-section-title {
+  font-family: var(--serif); font-size: 20px; font-weight: 800;
+  border-left: 4px solid var(--section, var(--red)); padding-left: 12px;
+}
+.trans-empty {
+  border: 1px dashed var(--line-dark); border-radius: 10px; padding: 14px 18px;
+  font-size: 12.5px; color: var(--brown-dk); background: rgba(255,255,255,.35);
+}

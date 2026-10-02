@@ -1,0 +1,505 @@
+[
+ {
+  "label": "Day 0",
+  "date": "06/14 週一",
+  "theme": "出發・夜班機",
+  "areas": [],
+  "slots": [
+   {
+    "time": "晚上",
+    "title": "台灣 → 維也納",
+    "note": "航班待訂・夜班機，隔天早上抵達",
+    "pending": false
+   }
+  ]
+ },
+ {
+  "label": "Day 1",
+  "date": "06/15 週二",
+  "theme": "抵達維也納",
+  "areas": [
+   "維也納機場",
+   "維也納"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "抵達維也納機場",
+    "note": "航班與入境時間待補",
+    "pending": false
+   },
+   {
+    "time": "中午",
+    "title": "維也納住宿 Check-in",
+    "note": "住宿待訂・太早到可先寄放行李",
+    "pending": false
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 2",
+  "date": "06/16 週三",
+  "theme": "維也納",
+  "areas": [
+   "維也納"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 3",
+  "date": "06/17 週四",
+  "theme": "維也納",
+  "areas": [
+   "維也納"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 4",
+  "date": "06/18 週五",
+  "theme": "維也納 → 格拉茨・自駕",
+  "areas": [
+   "維也納",
+   "格拉茨"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "維也納取車",
+    "note": "租車公司、取車地點與時間待補・維也納市區不開車，離開當天才取車",
+    "pending": false
+   },
+   {
+    "time": "上午",
+    "title": "維也納 → 格拉茨",
+    "note": "自駕・約 200 km、2 小時（概估）",
+    "pending": false
+   },
+   {
+    "time": "中午",
+    "title": "格拉茨住宿 Check-in",
+    "note": "住宿待訂・確認停車位",
+    "pending": false
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 5",
+  "date": "06/19 週六",
+  "theme": "格拉茨 → 鹽湖區・自駕",
+  "areas": [
+   "格拉茨",
+   "巴德伊舍"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "中午",
+    "title": "格拉茨 → 巴德伊舍",
+    "note": "自駕・約 200 km、2.5 小時（概估）",
+    "pending": false
+   },
+   {
+    "time": "下午",
+    "title": "巴德伊舍住宿 Check-in",
+    "note": "住宿待訂・確認停車位",
+    "pending": false
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 6",
+  "date": "06/20 週日",
+  "theme": "鹽湖區",
+  "areas": [
+   "鹽湖區"
+  ],
+  "slots": [
+   {
+    "time": "提醒",
+    "title": "週日商店公休",
+    "note": "奧地利週日多數商店與超市不營業，前一天先補給",
+    "pending": false
+   },
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 7",
+  "date": "06/21 週一",
+  "theme": "鹽湖區",
+  "areas": [
+   "鹽湖區"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 8",
+  "date": "06/22 週二",
+  "theme": "鹽湖區 → 薩爾茲堡・自駕",
+  "areas": [
+   "巴德伊舍",
+   "薩爾茲堡"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "中午",
+    "title": "巴德伊舍 → 薩爾茲堡",
+    "note": "自駕・約 60 km、1 小時（概估）",
+    "pending": false
+   },
+   {
+    "time": "下午",
+    "title": "薩爾茲堡住宿 Check-in",
+    "note": "住宿待訂・老城區不好停，先確認飯店停車",
+    "pending": false
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 9",
+  "date": "06/23 週三",
+  "theme": "薩爾茲堡",
+  "areas": [
+   "薩爾茲堡"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 10",
+  "date": "06/24 週四",
+  "theme": "薩爾茲堡 → 因斯布魯克・自駕",
+  "areas": [
+   "薩爾茲堡",
+   "因斯布魯克"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "中午",
+    "title": "薩爾茲堡 → 因斯布魯克",
+    "note": "自駕・約 185 km、2 小時（概估）・最快路線經德國（Deutsches Eck），待確認租車可跨境",
+    "pending": false
+   },
+   {
+    "time": "下午",
+    "title": "因斯布魯克住宿 Check-in",
+    "note": "住宿待訂",
+    "pending": false
+   },
+   {
+    "time": "傍晚",
+    "title": "因斯布魯克還車",
+    "note": "還車地點與時間待補・也可以留到 06/26 搭火車前再還",
+    "pending": false
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 11",
+  "date": "06/25 週五",
+  "theme": "因斯布魯克",
+  "areas": [
+   "因斯布魯克"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 12",
+  "date": "06/26 週六",
+  "theme": "因斯布魯克 → 慕尼黑・火車",
+  "areas": [
+   "因斯布魯克",
+   "慕尼黑"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "因斯布魯克 → 慕尼黑",
+    "note": "火車・約 1 小時 50 分（概估）・車次待補",
+    "pending": false
+   },
+   {
+    "time": "下午",
+    "title": "慕尼黑住宿 Check-in",
+    "note": "住宿待訂",
+    "pending": false
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 13",
+  "date": "06/27 週日",
+  "theme": "慕尼黑",
+  "areas": [
+   "慕尼黑"
+  ],
+  "slots": [
+   {
+    "time": "提醒",
+    "title": "週日商店公休",
+    "note": "德國週日多數商店與超市不營業，車站內的店照常",
+    "pending": false
+   },
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 14",
+  "date": "06/28 週一",
+  "theme": "慕尼黑",
+  "areas": [
+   "慕尼黑"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "晚上",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   }
+  ]
+ },
+ {
+  "label": "Day 15",
+  "date": "06/29 週二",
+  "theme": "慕尼黑・回程",
+  "areas": [
+   "慕尼黑",
+   "慕尼黑機場"
+  ],
+  "slots": [
+   {
+    "time": "上午",
+    "title": "（待安排）",
+    "note": "",
+    "pending": true
+   },
+   {
+    "time": "下午",
+    "title": "慕尼黑 → 台灣",
+    "note": "航班待訂",
+    "pending": false
+   }
+  ]
+ },
+ {
+  "label": "Day 16",
+  "date": "06/30 週三",
+  "theme": "抵達台灣",
+  "areas": [],
+  "slots": [
+   {
+    "time": "全日",
+    "title": "抵達台灣",
+    "note": "航班抵達時間待補",
+    "pending": false
+   }
+  ]
+ }
+]

@@ -1,0 +1,154 @@
+{
+ "fields": {
+  "出發": "2027-06-14",
+  "出發顯示": "06.14 週一",
+  "回程": "2027-06-30",
+  "回程顯示": "06.30 週三",
+  "天數": "17天・住宿14晚",
+  "季節": "初夏・白晝長、山上偏涼"
+ },
+ "stays": [
+  {
+   "city": "維也納",
+   "checkIn": "2027-06-15",
+   "checkOut": "2027-06-18",
+   "nights": 3,
+   "hotel": "",
+   "booked": false,
+   "parking": "市區不開車，不需要停車位",
+   "note": ""
+  },
+  {
+   "city": "格拉茨",
+   "checkIn": "2027-06-18",
+   "checkOut": "2027-06-19",
+   "nights": 1,
+   "hotel": "",
+   "booked": false,
+   "parking": "需要停車位",
+   "note": ""
+  },
+  {
+   "city": "鹽湖區",
+   "checkIn": "2027-06-19",
+   "checkOut": "2027-06-22",
+   "nights": 3,
+   "hotel": "",
+   "booked": false,
+   "parking": "需要停車位",
+   "note": "住 Bad Ischl"
+  },
+  {
+   "city": "薩爾茲堡",
+   "checkIn": "2027-06-22",
+   "checkOut": "2027-06-24",
+   "nights": 2,
+   "hotel": "",
+   "booked": false,
+   "parking": "需要停車位",
+   "note": "老城區不好停，優先找附停車位的飯店"
+  },
+  {
+   "city": "因斯布魯克",
+   "checkIn": "2027-06-24",
+   "checkOut": "2027-06-26",
+   "nights": 2,
+   "hotel": "",
+   "booked": false,
+   "parking": "還車前需要",
+   "note": ""
+  },
+  {
+   "city": "慕尼黑",
+   "checkIn": "2027-06-26",
+   "checkOut": "2027-06-29",
+   "nights": 3,
+   "hotel": "",
+   "booked": false,
+   "parking": "不開車，不需要停車位",
+   "note": ""
+  }
+ ],
+ "legs": [
+  {
+   "date": "2027-06-14",
+   "mode": "flight",
+   "from": "台灣",
+   "to": "維也納",
+   "note": "航班待訂・夜班機，06/15 抵達"
+  },
+  {
+   "date": "2027-06-18",
+   "mode": "drive",
+   "from": "維也納",
+   "to": "格拉茨",
+   "note": "維也納取車・約 200 km、2 小時（概估）"
+  },
+  {
+   "date": "2027-06-19",
+   "mode": "drive",
+   "from": "格拉茨",
+   "to": "鹽湖區",
+   "note": "約 200 km、2.5 小時（概估）"
+  },
+  {
+   "date": "2027-06-22",
+   "mode": "drive",
+   "from": "鹽湖區",
+   "to": "薩爾茲堡",
+   "note": "約 60 km、1 小時（概估）"
+  },
+  {
+   "date": "2027-06-24",
+   "mode": "drive",
+   "from": "薩爾茲堡",
+   "to": "因斯布魯克",
+   "note": "約 185 km、2 小時（概估）・最快路線經德國（Deutsches Eck），待確認租車可跨境・因斯布魯克還車"
+  },
+  {
+   "date": "2027-06-26",
+   "mode": "train",
+   "from": "因斯布魯克",
+   "to": "慕尼黑",
+   "note": "約 1 小時 50 分（概估）"
+  },
+  {
+   "date": "2027-06-29",
+   "mode": "flight",
+   "from": "慕尼黑",
+   "to": "台灣",
+   "note": "航班待訂・06/30 抵達"
+  }
+ ],
+ "bookings": [
+  {
+   "item": "機票",
+   "status": "待訂",
+   "done": false,
+   "detail": "台灣 → 維也納（06/14）／慕尼黑 → 台灣（06/29）"
+  },
+  {
+   "item": "租車",
+   "status": "待訂",
+   "done": false,
+   "detail": "維也納取車 → 因斯布魯克還車・確認可開進德國"
+  },
+  {
+   "item": "火車票",
+   "status": "待訂",
+   "done": false,
+   "detail": "因斯布魯克 → 慕尼黑（06/26）"
+  },
+  {
+   "item": "住宿",
+   "status": "待訂",
+   "done": false,
+   "detail": "6 段共 14 晚，見「住宿」"
+  }
+ ],
+ "transportNotes": [
+  "🚗｜奧地利高速公路要 Vignette（在奧地利租的車通常已附，取車時確認）",
+  "🚗｜部分隧道與山路是另外收費的路段",
+  "🚆｜火車票越早買越便宜（ÖBB Sparschiene／DB Sparpreis）"
+ ]
+}

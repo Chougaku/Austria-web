@@ -1,0 +1,17 @@
+name = "austria-dashboard"
+main = "src/index.ts"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "austria-trip"
+# `npx wrangler d1 create austria-trip` 之後把印出來的 database_id 填在這裡
+database_id = "00000000-0000-0000-0000-000000000000"
+
+[vars]
+GH_OWNER = "Chougaku"
+GH_REPO = "Austria-vault"
+GH_BRANCH = "main"
+GH_ITINERARY_PATH = "wiki/dashboard/每日行程.md"
+# 前端網址白名單（逗號分隔）；綁了自訂網域後把它加進來
+ALLOWED_ORIGINS = "https://austria.pages.dev,https://chougaku.github.io"

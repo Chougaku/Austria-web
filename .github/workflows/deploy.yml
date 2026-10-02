@@ -1,0 +1,104 @@
+name: deploy
+on:
+  push:
+    branches: [main]
+  repository_dispatch:
+    types: [vault-updated]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Chougaku/Austria-vault
+          path: vault
+          # vault 若設成私有，要在 Actions secrets 放一把能讀它的 VAULT_READ_TOKEN；公開的話留空即可。
+          token: ${{ secrets.VAULT_READ_TOKEN || github.token }}
+          # Clippings/ 的檔名取自網頁標題，中文＋emoji 常超過 Linux 的 255-byte
+          # 檔名上限，會讓整個 checkout 失敗。建置不讀這個資料夾，故排除。
+          sparse-checkout: |
+            /*
+            !/Clippings/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - run: npm ci
+      - run: npm run build:data
+        env:
+          NOTES_DIR: ${{ github.workspace }}/vault
+          R2_PUBLIC_URL_PREFIX: ${{ vars.R2_PUBLIC_URL_PREFIX }}
+      - run: npm run build
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+  deploy-cf-pages:
+    runs-on: ubuntu-latest
+    # 還沒設定 Cloudflare 憑證時跳過，只部署 GitHub Pages。
+    if: ${{ vars.CF_PAGES_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Chougaku/Austria-vault
+          path: vault
+          token: ${{ secrets.VAULT_READ_TOKEN || github.token }}
+          sparse-checkout: |
+            /*
+            !/Clippings/
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # 攻略／實體圖片上 R2：設了 R2_PUBLIC_URL_PREFIX 才跑
+      - if: ${{ vars.R2_PUBLIC_URL_PREFIX != '' }}
+        run: npm run sync:images
+        env:
+          NOTES_DIR: ${{ github.workspace }}/vault
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_R2_BUCKET_NAME: ${{ vars.CLOUDFLARE_R2_BUCKET_NAME }}
+      - run: npm run build:data
+        env:
+          NOTES_DIR: ${{ github.workspace }}/vault
+          R2_PUBLIC_URL_PREFIX: ${{ vars.R2_PUBLIC_URL_PREFIX }}
+      - run: npm run build
+        env:
+          VITE_API_BASE: ${{ vars.VITE_API_BASE }}
+          VITE_CF_PAGES: 1
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name austria --branch main
