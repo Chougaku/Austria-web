@@ -167,9 +167,7 @@ function MapVariant() {
 
       {/* 標題與指北針：放在兩張釘住的卡片中間 */}
       <text className="rh-small" x="835" y="78" textAnchor="middle">REISEROUTE · {CITIES.length} STÄDTE</text>
-      <text x="835" y="132" textAnchor="middle" style={{ font: 'italic 700 42px var(--serif)', fill: 'var(--ink)' }}>
-        Wien → München
-      </text>
+      <text className="rh-title" x="835" y="140" textAnchor="middle">Wien → München</text>
       <g transform="translate(835 214)">
         <circle r="24" fill="none" stroke="var(--brown-lt)" strokeWidth="1.2" />
         <polygon points="0,-20 6,0 0,20 -6,0" fill="var(--brown-lt)" opacity=".35" />

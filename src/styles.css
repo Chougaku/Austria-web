@@ -424,6 +424,12 @@ a { color: var(--red); }
 .rh-label { font-family: 'Noto Serif TC', serif; font-size: 27px; font-weight: 800; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 7px; stroke-linejoin: round; }
 .rh-legend { font-family: 'Noto Sans TC', sans-serif; font-size: 17px; fill: var(--brown-dk); }
 .rh-small { font-family: var(--serif); font-size: 15px; letter-spacing: .14em; fill: var(--brown); }
+/* 路線圖大標：全站唯一不用 Bodoni 的地方，Smythe 是使用者指定的新藝術海報字（見 DESIGN.md） */
+.rh-title {
+  font-family: 'Smythe', var(--serif); font-size: 66px; letter-spacing: .02em; fill: var(--ink);
+  /* Smythe 只有一種字重，同色描邊把筆畫補到海報標題的份量 */
+  stroke: var(--ink); stroke-width: 1.4px; stroke-linejoin: round; paint-order: stroke;
+}
 .route-hero--snake .rh-label { font-size: 15px; stroke-width: 4px; }
 .route-hero--snake .rh-pm-text { font-size: 7.4px; letter-spacing: .12em; }
 .route-hero--snake .rh-pm-date { font-size: 13px; }

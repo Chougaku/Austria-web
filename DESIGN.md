@@ -168,6 +168,10 @@ BUCHUNG、COUNTDOWN）。它明確拒絕：**灰撲撲的復古褪色風**、**�
 
 ### Named Rules
 **The Serif-for-Ceremony Rule.** 襯線只給標題、數字、郵戳、城市名；正文、按鈕、密集資料一律 Noto Sans TC。
+**The One Poster Title Exception.** 路線圖中央大標「Wien → München」（`.rh-title`）用 **Smythe**——
+使用者指定，參考 Zermatt 旅遊影片片頭那種新藝術海報字。只此一處，不擴散到其他標題；
+墨色、66px、同色 1.4px 描邊補字重（Smythe 只有一種字重）。曾試過照片頭做金橘漸層＋深色描邊，
+放在淺色紙地圖上太搶、會壓過紅色路線，所以沒採用。
 **The European Date Rule.** 郵戳與路線圖上的日期用歐式 `15.06.`；卡片與列表用 `6/15`（台灣讀者習慣）。
 
 ## 4. Elevation
