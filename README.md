@@ -68,16 +68,24 @@
 - **狀態**：前端 --(讀取免驗證，寫入用 Bearer 通行密碼)--> Cloudflare Worker（Hono）--> D1（austria-trip）
 - **自動重建**：Austria-vault push --> notify-dashboard workflow --> repository_dispatch --> Austria-web deploy
 
-## 上線設定清單（還沒做的在這裡）
+## 上線設定清單
 
-1. GitHub：建立 `Chougaku/Austria-web`、`Chougaku/Austria-vault` 並 push；Austria-web 開啟 GitHub Pages（Actions 來源）。
-   vault 若設私有，在 Austria-web 加 Actions secret `VAULT_READ_TOKEN`。
-2. Austria-vault 加 Actions secret `AUSTRIA_WEB_PAT`（對 Austria-web 有 contents 寫入權的 fine-grained token），push 後才會觸發網站重建。
-3. Cloudflare（要收藏同步才需要）：
+1. ✅ GitHub：`Chougaku/Austria-web`、`Chougaku/Austria-vault` 皆公開；Austria-web 開啟 GitHub Pages（Actions 來源）。
+   vault 若改私有，在 Austria-web 加 Actions secret `VAULT_READ_TOKEN`。
+2. ✅ Austria-vault 的 Actions secret `AUSTRIA_WEB_PAT`（對 Austria-web 有 contents 寫入權的 fine-grained token），push 後觸發網站重建。
+3. ✅ Cloudflare 後端（登入編輯、收藏／待辦同步、行程回寫）：Worker `austria-dashboard`
+   （`https://austria-dashboard.chougaku.workers.dev`）＋ D1 `austria-trip`，三個 secret 都設了，
+   Austria-web 的 Actions variable `VITE_API_BASE` 指向這個網址。重做一次的步驟：
    - `cd worker && npx wrangler d1 create austria-trip`，把 database_id 填進 `worker/wrangler.toml`
    - `npx wrangler d1 execute austria-trip --remote --file=schema.sql`
-   - `npx wrangler secret put DASH_TOKEN`、`DASH_PASSWORD`、`GITHUB_TOKEN`（GitHub token 要能寫 Austria-vault）
-   - `npm run deploy`，把 Worker 網址設成 Austria-web 的 Actions variable `VITE_API_BASE`
+   - `npm run deploy`（新帳號第一次會要你註冊 workers.dev 子網域）
+   - `npx wrangler secret put DASH_TOKEN`、`DASH_PASSWORD`、`GITHUB_TOKEN`（GitHub token 要能寫 Austria-vault 的 Contents）
+   - 把 Worker 網址設成 Austria-web 的 Actions variable `VITE_API_BASE`，重跑部署
+
+   日常維護（都在 `worker/` 下執行，網站不用重建）：
+   - 換登入密碼：`npx wrangler secret put DASH_PASSWORD`。已登入的裝置不會被登出。
+   - 讓所有裝置都登出：`npx wrangler secret put DASH_TOKEN`，貼一串新的亂數。
+   - 每日行程提交出現「Worker 的 GitHub token 已失效」：重建 token，`npx wrangler secret put GITHUB_TOKEN`。
 4. Cloudflare Pages（選用）：Actions secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`，variable `CF_PAGES_ENABLED=true`；
    綁自訂網域後把網址加進 `worker/wrangler.toml` 的 `ALLOWED_ORIGINS`。
 5. 圖片上 R2（選用）：variables `R2_PUBLIC_URL_PREFIX`、`CLOUDFLARE_R2_BUCKET_NAME`。

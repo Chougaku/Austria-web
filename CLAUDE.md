@@ -12,6 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 因斯布魯克 2 → 慕尼黑 3 晚；維也納到因斯布魯克自駕，因斯布魯克到慕尼黑火車。
 
 - 網站：GitHub Pages `chougaku.github.io/Austria-web/`；Cloudflare Pages 專案 `austria`（選用）
+- 後端：Worker `https://austria-dashboard.chougaku.workers.dev`（2026-10-03 上線，D1 `austria-trip` 在 APAC）
 - 產品定位見 `PRODUCT.md`；設計 token（色票、字體、郵戳風格）見 `DESIGN.md`。
   **凡涉及視覺/樣式的改動，動手前先讀 `DESIGN.md`**，遵循其色票與歐式旅券風格定義。
 
@@ -94,6 +95,9 @@ Cloudflare 與 R2 設定。
 
 共用密碼制：`POST /api/login` 用密碼（Worker secret `DASH_PASSWORD`）換寫入 token（即 `DASH_TOKEN`），
 存 localStorage（`austria-dash-token`）。`?setup=<token>` 可一鍵完成新裝置設定。
+頁首「登入編輯」只在有 `VITE_API_BASE` 時出現。secret 沒設時 Worker 一律擋（登入回 503、寫入回 401），
+前端把 503／連不上顯示成「連不上伺服器」，401 才是「密碼錯誤」。換 `DASH_PASSWORD` 不會登出已登入的裝置（token 沒變），
+要全部登出得換 `DASH_TOKEN`。密碼本身只存在 Cloudflare secret，**不要寫進 repo（兩個 repo 都公開）**。
 
 ### Worker（`worker/src/index.ts`，Hono + D1）
 
@@ -101,7 +105,7 @@ Cloudflare 與 R2 設定。
 - `GET /api/state` 與 `POST /api/login` 免驗證，其餘要 `Authorization: Bearer <DASH_TOKEN>`。
 - CORS 白名單來自 `wrangler.toml` 的 `ALLOWED_ORIGINS`（逗號分隔，預設 `austria.pages.dev` 與 `chougaku.github.io`），
   本機任意 port 放行。綁自訂網域時改這裡。
-- `wrangler.toml`：D1 綁定 `DB`（database `austria-trip`，**database_id 建立後要填**）；
+- `wrangler.toml`：D1 綁定 `DB`（database `austria-trip`，id 已填）；`workers_dev = true`、`preview_urls = false`；
   `[vars]` 有 `GH_OWNER=Chougaku`/`GH_REPO=Austria-vault`/`GH_BRANCH`/`GH_ITINERARY_PATH`。
 - Worker secrets（存在 Cloudflare，本機取不到）：`DASH_TOKEN`、`DASH_PASSWORD`、`GITHUB_TOKEN`（要能寫 Austria-vault）。
 

@@ -1,12 +1,14 @@
 name = "austria-dashboard"
 main = "src/index.ts"
 compatibility_date = "2026-07-01"
+# 對外只留 austria-dashboard.chougaku.workers.dev；每個版本各自的預覽網址關掉
+workers_dev = true
+preview_urls = false
 
 [[d1_databases]]
 binding = "DB"
 database_name = "austria-trip"
-# `npx wrangler d1 create austria-trip` 之後把印出來的 database_id 填在這裡
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "094f407f-4292-48bf-81d1-6ab39ce5ac72"
 
 [vars]
 GH_OWNER = "Chougaku"

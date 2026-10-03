@@ -4,7 +4,7 @@ import { useAuth } from '../state/auth';
 export default function LoginModal() {
   const { loginOpen, closeLogin, login } = useAuth();
   const [pw, setPw] = useState('');
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!loginOpen) return null;
@@ -13,12 +13,13 @@ export default function LoginModal() {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
-    setError(false);
+    setError(null);
     try {
-      const ok = await login(pw); // 成功會 reload；失敗回 false
-      if (!ok) { setError(true); setBusy(false); }
+      const ok = await login(pw); // 成功會 reload；密碼錯回 false
+      if (!ok) { setError('密碼錯誤'); setBusy(false); }
     } catch {
-      setError(true); setBusy(false);
+      // 連不上 Worker（離線、還沒部署）跟打錯密碼要分開講，不然會一直重打密碼。
+      setError('連不上伺服器，請確認網路後再試'); setBusy(false);
     }
   }
 
@@ -32,17 +33,17 @@ export default function LoginModal() {
       <form onClick={(e) => e.stopPropagation()} onSubmit={submit} className="card"
         style={{ width: 'min(360px, 92vw)', display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div className="serif" style={{ fontSize: 19, fontWeight: 700 }}>登入以編輯</div>
-        <div style={{ fontSize: 13, color: 'var(--brown-dk)' }}>輸入密碼即可標記想去的地方；未登入僅能瀏覽。</div>
+        <div style={{ fontSize: 13, color: 'var(--brown-dk)' }}>登入後可以編輯每日行程、標記想去的地方、勾選待辦；未登入僅能瀏覽。</div>
         <label htmlFor="login-pw" style={{ fontSize: 12, color: 'var(--brown)', letterSpacing: '.08em' }}>密碼</label>
         <input id="login-pw" type="password" inputMode="numeric" pattern="[0-9]*"
           autoComplete="one-time-code" enterKeyHint="go" autoFocus
-          value={pw} onChange={(e) => { setPw(e.target.value); setError(false); }}
+          value={pw} onChange={(e) => { setPw(e.target.value); setError(null); }}
           style={{
             fontSize: 20, letterSpacing: '.3em', textAlign: 'center',
             padding: '12px 14px', borderRadius: 8, border: '1px solid var(--line-dark)',
             background: 'var(--paper)', color: 'var(--ink)', fontFamily: 'inherit',
           }} />
-        {error && <div style={{ fontSize: 12.5, color: 'var(--red)' }}>密碼錯誤</div>}
+        {error && <div role="alert" style={{ fontSize: 12.5, color: 'var(--red)' }}>{error}</div>}
         <button type="submit" disabled={busy}
           style={{
             minHeight: 44, borderRadius: 8, border: 'none', cursor: 'pointer',

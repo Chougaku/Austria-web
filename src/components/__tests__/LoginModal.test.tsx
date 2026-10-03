@@ -36,4 +36,13 @@ describe('LoginModal', () => {
     await waitFor(() => expect(screen.getByText('密碼錯誤')).toBeTruthy());
     expect(mockLogin).toHaveBeenCalledWith('9999');
   });
+
+  it('連不上伺服器時不說密碼錯誤', async () => {
+    mockLogin.mockRejectedValue(new Error('POST login 503'));
+    render(<LoginModal />);
+    fireEvent.change(screen.getByLabelText('密碼'), { target: { value: '1111' } });
+    fireEvent.click(screen.getByRole('button', { name: '登入' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe('連不上伺服器，請確認網路後再試'));
+    expect(screen.queryByText('密碼錯誤')).toBeNull();
+  });
 });

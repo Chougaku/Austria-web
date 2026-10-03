@@ -86,6 +86,29 @@ describe('worker API', () => {
     }, env);
     expect(res.status).toBe(401);
   });
+
+  it('POST /api/login 沒帶密碼或格式壞掉回 401', async () => {
+    for (const body of ['{}', 'not json', JSON.stringify({ password: 509 })]) {
+      const res = await app.request('/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+      }, env);
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it('secret 還沒設：登入回 503、`Bearer undefined` 不能寫入', async () => {
+    const bare = { DB: fakeD1() as unknown };
+    const login = await app.request('/api/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }, bare);
+    expect(login.status).toBe(503);
+    const put = await app.request('/api/state/x', {
+      method: 'PUT', headers: { Authorization: 'Bearer undefined', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value: true }),
+    }, bare);
+    expect(put.status).toBe(401);
+  });
 });
 
 function b64(str: string) {
