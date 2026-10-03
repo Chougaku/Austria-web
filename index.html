@@ -2,6 +2,35 @@
 <html lang="zh-Hant-TW">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // 舊網頁自救：GitHub Pages 讓瀏覽器快取 HTML 10 分鐘，但每次重建（含網站上存行程觸發的）都會換掉
+      // 帶 hash 的 JS／CSS 並刪掉舊檔。拿著快取舊網頁的手機會去要已經不存在的檔案 → 一片空白。
+      // 偵測到自家 /assets/ 載不到就帶 ?_r= 換一個網址重抓最新 HTML；30 秒內再失敗就別再跳，改顯示提示。
+      (function () {
+        var KEY = 'austria-reload-at';
+        function notice() {
+          var root = document.getElementById('root');
+          if (!root) { document.addEventListener('DOMContentLoaded', notice); return; }
+          if (!root.hasChildNodes()) root.innerHTML = '<p style="padding:40px 20px;text-align:center;font:15px sans-serif;color:#514A3E">網站剛更新，請重新整理一次。</p>';
+        }
+        function fresh() {
+          var last = 0;
+          try { last = Number(sessionStorage.getItem(KEY)) || 0; } catch (e) {}
+          if (Date.now() - last < 30000) { notice(); return; }
+          try { sessionStorage.setItem(KEY, String(Date.now())); } catch (e) {}
+          var url = new URL(location.href);
+          url.searchParams.set('_r', Date.now().toString(36));
+          location.replace(url.toString());
+        }
+        window.addEventListener('error', function (e) {
+          var t = e.target;
+          var src = t && (t.src || t.href) || '';
+          if (src.indexOf('/assets/') !== -1 && (t.tagName === 'SCRIPT' || t.tagName === 'LINK')) fresh();
+        }, true);
+        // 頁面開著的時候網站重建，之後才載入的地圖等分段程式也會 404，Vite 會丟這個事件。
+        window.addEventListener('vite:preloadError', function (e) { e.preventDefault(); fresh(); });
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />

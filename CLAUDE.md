@@ -117,6 +117,10 @@ push 到 main、收到 vault 的 `repository_dispatch: vault-updated`、或手�
   `pages deploy dist --project-name austria`。需要 secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`。
 - Variables：`VITE_API_BASE`（Worker 網址）、`R2_PUBLIC_URL_PREFIX`、`CLOUDFLARE_R2_BUCKET_NAME`。
 
+舊網頁自救：GitHub Pages 讓瀏覽器快取 HTML 10 分鐘，但每次重建（含網站上存行程觸發的）都會刪掉舊的帶 hash 檔案，
+拿著快取舊網頁的人會一片空白。`index.html` 開頭的內嵌腳本偵測到自家 `/assets/` 載不到（或 `vite:preloadError`）
+就帶 `?_r=` 換網址重抓，30 秒內再失敗改顯示提示；`main.tsx` 載入成功後把 `_r` 從網址拿掉。測試在 `src/__tests__/stale-page-recovery.test.ts`。
+
 分享預覽（LINE 縮圖）：`index.html` 的 `og:*` 標籤＋`public/og-image.jpg`（1200×1200，LINE 會裁成正方形）。
 `og:image` 必須是完整網址，換網域要一起改；LINE 有快取，換圖後舊預覽要等快取過期或在網址後加 `?v=2` 重新分享。
 
