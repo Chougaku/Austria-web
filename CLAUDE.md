@@ -122,7 +122,8 @@ push 到 main、收到 vault 的 `repository_dispatch: vault-updated`、或手�
 ### 頁面/元件
 
 `src/App.tsx` 用 `location.hash` 做無 router 的分頁切換，分頁定義在 `src/lib/tabs.ts`。
-- `Home`：`RouteHero`（手繪路線圖；手機換蛇形版）＋旅券票根、行程摘要、住宿 6 段、移動、預訂、待辦、收藏。
+- `Home`：立體地景（`public/diorama-*.webp`，旅券票根與行程摘要釘在島底下兩角）→ `RouteHero`（手繪路線圖；手機換蛇形版）
+  → 住宿 6 段、移動、預訂、待辦、收藏。換地景圖的流程見 `DESIGN.md`「立體地景」。
 - `DailyPlan`：17 天日期列（換城日標方式符號）、標題下「當天移動＋今晚住哪」、時間軸／卡片／地圖三檢視。
 - `Food` / `Places`：類型＋城市篩選（`CityChips`）。`Transport`：路段時間軸＋自駕／火車／市內三區。
 - `AreaMap`：Leaflet 地圖（郵戳依螢幕距離自動合併、畫路線）＋`AreaRail` 路線區域列＋周邊一日遊。

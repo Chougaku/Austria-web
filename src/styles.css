@@ -289,12 +289,16 @@ a { color: var(--red); }
 /* 日期不折行；季節這類長字串允許折行，否則會被卡片邊緣切掉。 */
 .ov-summary-v { font-family: var(--serif); font-size: 16px; font-weight: 700; margin-top: 3px; line-height: 1.3; overflow-wrap: anywhere; }
 
+/* 拼貼主視覺：立體地景（透明底 webp）滿版當底，卡片釘在島底下左右兩角的空白。
+   上方兩角是五月樹、聖母教堂、史蒂芬尖塔與摩天輪，不能壓；下方只有岩層與樹根。
+   位置用 %（跟著圖縮放），卡片高度自適應內容。 */
 .ov-stage { position: relative; }
+.ov-diorama { width: 100%; height: auto; display: block; animation: dioramaFloat 7.5s ease-in-out infinite; }
+@keyframes dioramaFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 .ov-float { box-shadow: 3px 3px 0 rgba(34, 32, 28, .09); }
 .ov-pin { position: absolute; z-index: 1; }
-/* 兩張卡釘在地圖上方左右兩角——路線與郵戳都在下半部，這兩塊是空的。 */
-.ov-pin--pass { left: 1.5%; top: 3%; width: 31%; }
-.ov-pin--sum { right: 1.5%; top: 3%; width: 27%; }
+.ov-pin--pass { left: 0; bottom: 0; width: 30%; }
+.ov-pin--sum { right: 0; bottom: 2%; width: 27%; }
 .ov-stage-cap {
   position: absolute; z-index: 1; left: 50%; bottom: -4px; transform: translateX(-50%);
   font-size: 11px; letter-spacing: .16em; color: var(--brown); white-space: nowrap;
@@ -370,9 +374,9 @@ a { color: var(--red); }
 .leg-note { grid-column: 3; font-size: 12px; line-height: 1.55; color: var(--brown-dk); }
 
 @media (max-width: 1000px) {
-  /* 窄螢幕沒有可釘的空白：卡片回到流式排版，路線圖維持在最前 */
+  /* 窄螢幕沒有可釘的空白：卡片回到流式排版，地景維持在最前 */
   .ov-stage { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 12px; }
-  .ov-stage > .route-hero-wrap { grid-column: 1 / -1; order: -2; }
+  .ov-stage > .ov-diorama { grid-column: 1 / -1; order: -2; }
   .ov-pin { position: static; width: auto; }
   .ov-stage-cap { position: static; transform: none; grid-column: 1 / -1; order: -1; text-align: center; margin-top: -6px; }
   .ov-mid { grid-template-columns: minmax(0, 1fr); }
@@ -446,7 +450,7 @@ a { color: var(--red); }
   .card-tap, .guide-body, .ov-tilt { transition: none; }
   .reveal { opacity: 1; transform: none; }
   .reveal--in { transition: none; }
-  .heart--pop, .stamp, .stamp--pop, .cd-num-enter { animation: none; }
+  .heart--pop, .stamp, .stamp--pop, .cd-num-enter, .ov-diorama { animation: none; }
   .stamp--pop::after { animation: none; }
   .area-rail-line, .area-rail-dot { transition: none !important; transform: none !important; animation: none !important; }
   .seal-loader { animation: none; }

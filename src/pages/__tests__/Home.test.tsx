@@ -48,7 +48,14 @@ const renderHome = () => render(
 describe('Home 頁面與路線圖主視覺', () => {
   afterEach(() => cleanup());
 
-  it('主視覺是路線圖（桌機地圖版＋手機蛇形版），依行程順序列出六座城市', () => {
+  it('最上面是立體地景，圖檔走 Vite base、帶 900w／1600w 兩種尺寸', () => {
+    renderHome();
+    const img = screen.getByRole('img', { name: /微縮立體地景/ }) as HTMLImageElement;
+    expect(img.getAttribute('src')).toMatch(/diorama-1600\.webp$/);
+    expect(img.getAttribute('srcset')).toMatch(/diorama-900\.webp 900w, .*diorama-1600\.webp 1600w/);
+  });
+
+  it('立體地景下面接路線圖（桌機地圖版＋手機蛇形版），依行程順序列出六座城市', () => {
     renderHome();
     const map = screen.getByRole('img', { name: /路線圖/ });
     expect(map.getAttribute('aria-label')).toBe('路線圖：維也納 → 格拉茨 → 鹽湖區 → 薩爾茲堡 → 因斯布魯克 → 慕尼黑');

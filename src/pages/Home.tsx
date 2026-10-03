@@ -9,6 +9,12 @@ import GuideFavCard from '../components/GuideFavCard';
 import RouteHero from '../components/RouteHero';
 import { LEG_META, shortDate, totalNights } from '../lib/trip';
 
+// 立體地景放在 public/，跟著 Vite 的 base 走（GitHub Pages 是 /Austria-web/）。
+const DIORAMA = `${import.meta.env.BASE_URL}diorama-1600.webp`;
+const DIORAMA_SM = `${import.meta.env.BASE_URL}diorama-900.webp`;
+const DIORAMA_W = 1600;
+const DIORAMA_H = 945;
+
 export default function Home() {
   const { todosState, toggleTodo, favCount, favs } = useTripState();
   const { canEdit, openLogin } = useAuth();
@@ -44,9 +50,20 @@ export default function Home() {
         <div className="ov-greet-sub">距離出發還有 {cd} 天・{CITIES.length} 座城市，一站一站蓋上郵戳</div>
       </div>
 
-      {/* 路線圖舞台：旅券與摘要釘在圖上方的空白 */}
+      {/* 拼貼主視覺：立體地景當底，旅券與摘要釘在上方兩角的天空 */}
       <div className="ov-stage">
-        <RouteHero />
+        {/* 不用 <picture>／<source>：媒體查詢命中後會整個蓋掉 srcSet，高密度手機就拿不到 1600w */}
+        <img
+          className="ov-diorama"
+          src={DIORAMA}
+          srcSet={`${DIORAMA_SM} 900w, ${DIORAMA} 1600w`}
+          sizes="(max-width: 1000px) 96vw, 1080px"
+          width={DIORAMA_W}
+          height={DIORAMA_H}
+          alt="奧地利與巴伐利亞微縮立體地景：慕尼黑聖母教堂、因斯布魯克黃金屋頂、薩爾茲堡要塞、哈修塔特湖畔、格拉茨鐘塔、維也納史蒂芬大教堂與摩天輪"
+          fetchPriority="high"
+          decoding="async"
+        />
 
         {/* 旅券票根卡 */}
         <div className="card ov-float ov-pass ov-pin ov-pin--pass ov-tilt ov-tilt--a">
@@ -80,8 +97,11 @@ export default function Home() {
           ))}
         </div>
 
-        <div className="ov-stage-cap">ÖSTERREICH &amp; BAYERN · DIE ROUTE</div>
+        <div className="ov-stage-cap">ÖSTERREICH &amp; BAYERN · IN MINIATUR</div>
       </div>
+
+      {/* 手繪路線圖：六城郵戳、移動方式與日期 */}
+      <RouteHero />
 
       <div className="ov-mid">
         {/* 住宿：6 段 */}

@@ -42,3 +42,6 @@ untitled/
 
 # Obsidian workspace (this is the web-app repo, not the vault)
 .obsidian/
+
+# AI 生成的原圖（處理後的 public/diorama-*.webp 才進 repo）
+Gemini_Generated_Image_*
