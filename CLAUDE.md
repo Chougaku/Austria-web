@@ -117,6 +117,9 @@ push 到 main、收到 vault 的 `repository_dispatch: vault-updated`、或手�
   `pages deploy dist --project-name austria`。需要 secrets `CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`。
 - Variables：`VITE_API_BASE`（Worker 網址）、`R2_PUBLIC_URL_PREFIX`、`CLOUDFLARE_R2_BUCKET_NAME`。
 
+分享預覽（LINE 縮圖）：`index.html` 的 `og:*` 標籤＋`public/og-image.jpg`（1200×1200，LINE 會裁成正方形）。
+`og:image` 必須是完整網址，換網域要一起改；LINE 有快取，換圖後舊預覽要等快取過期或在網址後加 `?v=2` 重新分享。
+
 `vite.config.ts` 的 `base` 依 `VITE_CF_PAGES` 切換 `/`（Cloudflare Pages）或 `/Austria-web/`（GitHub Pages）。
 
 ### 頁面/元件
