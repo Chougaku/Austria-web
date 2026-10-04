@@ -199,11 +199,14 @@ BUCHUNG、COUNTDOWN）。它明確拒絕：**灰撲撲的復古褪色風**、**�
     塔樓擋在它前面（裁切）、底座前的高樹是遮擋圖。
   - t = 0 時每樣東西都在原圖位置；`prefers-reduced-motion` 只擺靜態、不跑動畫；看不到時（IntersectionObserver）停掉、約 30fps。
   - 時間與位置在 `src/lib/diorama-motion.ts`（純函式）與 `diorama-poses.ts`；開發時主控台 `__dioramaSeek(秒)` 可跳到某時間點。
-- 素材產生：`npm i --no-save sharp @techstark/opencv-js` 後 `node scripts/diorama/build.cjs <原圖> [--clean=<乾淨版>]`，
+- 素材產生：`npm i --no-save sharp @techstark/opencv-js` 後 `node scripts/diorama/build.cjs <原圖> [--clean[:物件,…]=<乾淨版>]…`，
   輸出底圖、`public/diorama/*.webp` 小圖與 `src/data/diorama-scene.json`。背景是米白（253,253,245）→ 從四邊 flood fill；
   摩天輪輪框內這種被圍住的背景另外指定範圍清（不能全圖清，雪山最亮的雪跟背景幾乎同色）。
-  物件挖掉後的洞：草地、湖水從旁邊複製同材質；柏油用平滑補色加顆粒；石板用平滑補色疊乾淨小塊的紋理。
-  **火車那段橋面自己補不好**：要 Gemini「移除會動物件」的乾淨版（`--clean=`，自動找位移對齊、補色差）；沒有就讓火車留在底圖上不動。
+  物件挖掉後的洞：有 Gemini「移除會動物件」的乾淨版就拿它補（自動找位移對齊、補色差；連同周圍一圈一起換，影子才不會留在原地）；
+  沒有的話，草地、湖水從旁邊複製同材質；柏油用平滑補色加顆粒；石板用平滑補色疊乾淨小塊的紋理。
+  Gemini 常常只移掉一部分，所以冒號後面只列「這張確實移乾淨」的物件，可以給好幾張。目前用
+  `--clean:car,boat,couple=Gemini_Generated_Image_6qfzn16qfzn16qfz.jfif`（這張火車沒移掉、橋被畫成拱橋，廣場兩人還在）。
+  **火車那段橋面自己補不好**：要有火車移乾淨的乾淨版才讓它動；沒有就讓火車留在底圖上不動。
 - **換圖＝重量座標**：遮罩、路徑、摩天輪橢圓都是這張圖量出來的（`scripts/diorama/masks.cjs`、`build.cjs` 第 8 段）。原圖不進 repo。
 
 ### 路線圖 RouteHero（招牌元件）

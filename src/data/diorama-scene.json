@@ -64,9 +64,9 @@
     }
   },
   "patched": {
-    "car": "texture",
-    "boat": "texture",
-    "couple": "texture",
+    "car": "clean",
+    "boat": "clean",
+    "couple": "clean",
     "men": "texture",
     "car2": "texture"
   },

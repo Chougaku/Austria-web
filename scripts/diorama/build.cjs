@@ -5,8 +5,10 @@
 //
 // 用法（sharp、opencv 不是專案依賴，用完不留）：
 //   npm i --no-save sharp @techstark/opencv-js
-//   node scripts/diorama/build.cjs <原圖> [--clean=<Gemini 移除會動物件的版本>] [--force-train] [--debug]
-// - 沒給 --clean：火車留在底圖上不動（橋面沒有乾淨的版本可補，自己補會糊）；--force-train 硬挖（只供開發檢查）。
+//   node scripts/diorama/build.cjs <原圖> [--clean[:物件,…]=<Gemini 移除會動物件的版本>]… [--force-train] [--debug]
+// - --clean 可以給好幾張：冒號後面列出「這張確實移乾淨」的物件（train car car2 boat couple men），不列＝全部。
+//   Gemini 常常只移掉一部分，所以每個物件各自挑乾淨的那張；沒有乾淨版的物件用同一張圖旁邊的材質補。
+// - 沒有火車的乾淨版：火車留在底圖上不動（橋面自己補會糊）；--force-train 硬挖（只供開發檢查）。
 // - 所有座標都是「這一張」原圖量出來的（masks.cjs 與下面第 8 段）：換圖就要重新量，見 DESIGN.md「立體地景」。
 const sharp = require('sharp');
 const fs = require('fs');
@@ -17,9 +19,19 @@ const M = require('./masks.cjs');
 const ROOT = path.resolve(__dirname, '../..');
 const outDir = path.join(ROOT, 'public');
 const [input, ...flags] = process.argv.slice(2);
-if (!input) { console.error('usage: node scripts/diorama/build.cjs <原圖> [--clean=<乾淨版>] [--force-train] [--debug]'); process.exit(1); }
-const cleanPath = flags.find((f) => f.startsWith('--clean='))?.slice(8);
-const trainMoves = !!cleanPath || flags.includes('--force-train');
+if (!input) { console.error('usage: node scripts/diorama/build.cjs <原圖> [--clean[:物件,…]=<乾淨版>]… [--force-train] [--debug]'); process.exit(1); }
+// 物件名 → 用哪張乾淨版補（物件列在旗標名稱裡，檔名才能放 Windows 路徑的冒號）
+const CLEANABLE = ['train', 'car', 'car2', 'boat', 'couple', 'men'];
+const cleanFor = {};
+for (const f of flags) {
+  const m = f.match(/^--clean(?::([\w,]+))?=(.+)$/);
+  if (!m) continue;
+  for (const name of m[1] ? m[1].split(',') : CLEANABLE) {
+    if (!CLEANABLE.includes(name)) { console.error(`--clean：沒有「${name}」這個物件（可用 ${CLEANABLE.join(' ')}）`); process.exit(1); }
+    cleanFor[name] = m[2];
+  }
+}
+const trainMoves = !!cleanFor.train || flags.includes('--force-train');
 const { W, H } = M;
 
 // 原圖 → 網站底圖：裁掉透明邊，四周留 44px，縮成 1600 寬（固定框：擦掉摩天輪後不能讓裁切跟著變）。
@@ -180,25 +192,38 @@ function loadCv() {
   rgb.delete(); mk.delete(); filled.delete();
 
   // Telea 只適合小洞；有材質的地方改「從別處複製同材質」貼上（自動補色差、羽化）。
-  // 有 Gemini 乾淨版就全部拿它補（自動找位移對齊）；沒有就用同一張圖旁邊的材質，火車那段只能先用 Telea。
-  const { patchRegion } = require('./patch.cjs');
-  const cleanRaw = cleanPath ? await sharp(cleanPath).resize(W, H, { fit: 'fill' }).ensureAlpha().raw().toBuffer() : null;
+  // 有 Gemini 乾淨版的物件拿它補（自動找位移對齊）；沒有就用同一張圖旁邊的材質，火車那段只能先用 Telea。
+  const { patchRegion, alignOffset } = require('./patch.cjs');
+  const plates = {};
+  for (const file of new Set(Object.values(cleanFor))) plates[file] = await sharp(file).resize(W, H, { fit: 'fill' }).ensureAlpha().raw().toBuffer();
+
+  // 小圖不帶影子，影子留在底圖上，物件一走就穿幫。乾淨版裡物件和影子都沒有，所以連同物件周圍 shade px
+  // （影子落在這圈裡）一起換成乾淨版。不用「比乾淨版暗」去找影子：Gemini 重畫後草地的花全換了位置，雜訊比淡影子還大。
+  // 位移用物件本身的外圈對齊（擴大後的外圈若是整片湖水，對不準）。
+  const plateRegion = (plate, mask, box, r) => ({
+    mask: M.dilate(mask, r),
+    box: [box[0] - r, box[1] - r, box[2] + r, box[3] + r],
+    offset: alignOffset({ orig, src: plate, W, H, mask, box, search: 14 }),
+  });
+
+  // shade：乾淨版要連同物件周圍多少 px 一起換（蓋住影子）
   const patchPlan = {
-    ...(trainMoves ? { train: { mask: masks.train, box: M.OBJECTS.train.box, self: null } } : {}),
-    car: { mask: M.union(carBody, carShadow), box: [1092, 935, 1158, 992], grain: 3.2 },
-    boat: { mask: M.union(masks.boat, boatShadow), box: M.OBJECTS.boat.box, self: [-122, 4], opts: { colorFix: false } },
-    couple: { mask: masks.couple, box: M.OBJECTS.couple.box, self: [54, 0] },
-    men: { mask: masks.men, box: M.OBJECTS.men.box, tile: [1995, 940, 2030, 957] },
-    car2: { mask: masks.car2, box: M.OBJECTS.car2.box, grain: 3.2 },
+    ...(trainMoves ? { train: { mask: masks.train, box: M.OBJECTS.train.box, shade: 20 } } : {}),
+    car: { mask: M.union(carBody, carShadow), box: [1092, 935, 1158, 992], shade: 10, grain: 3.2 },
+    boat: { mask: M.union(masks.boat, boatShadow), box: M.OBJECTS.boat.box, shade: 28, self: [-122, 4], opts: { colorFix: false } },
+    couple: { mask: masks.couple, box: M.OBJECTS.couple.box, shade: 24, self: [54, 0] },
+    men: { mask: masks.men, box: M.OBJECTS.men.box, shade: 14, tile: [1995, 940, 2030, 957] },
+    car2: { mask: masks.car2, box: M.OBJECTS.car2.box, shade: 8, grain: 3.2 },
   };
   geo.patched = {};
   for (const [name, p] of Object.entries(patchPlan)) {
+    const plate = cleanFor[name] && plates[cleanFor[name]];
     let r = null;
-    if (cleanRaw) r = patchRegion({ out, orig, src: cleanRaw, W, H, mask: p.mask, box: p.box, search: 14 });
+    if (plate) r = patchRegion({ out, orig, src: plate, W, H, ...plateRegion(plate, p.mask, p.box, p.shade) });
     else if (p.self) r = patchRegion({ out, orig, src: orig, W, H, mask: p.mask, box: p.box, offset: p.self, ...(p.opts ?? {}) });
     else if (p.tile) r = addTexture(out, orig, holesD, p.box, p.tile);
     else if (p.grain) r = addGrain(out, holesD, p.box, p.grain);
-    geo.patched[name] = r ? (cleanRaw ? 'clean' : 'texture') : 'telea';
+    geo.patched[name] = r ? (plate ? 'clean' : 'texture') : 'telea';
     console.log(`patch ${name}:`, r ? JSON.stringify(r) : 'telea only');
   }
 
