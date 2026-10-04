@@ -40,6 +40,9 @@ const SCALE = 1600 / (CROP.width + 2 * CROP.pad);
 const toBase = ([x, y]) => [+((x - CROP.left + CROP.pad) * SCALE).toFixed(1), +((y - CROP.top + CROP.pad) * SCALE).toFixed(1)];
 const len = (v) => +(v * SCALE).toFixed(2);
 
+// 鐵軌中心線（原圖座標），左下島緣 → 右上。原圖橋上那段被火車擋住，用前後兩段連起來。
+const TRAIN_PATH = [[552, 1045], [567, 1040], [630, 1017], [692, 992], [755, 965], [890, 893], [989, 841], [1084, 792], [1140, 772], [1220, 744], [1300, 716], [1360, 688], [1400, 670], [1422, 660]];
+
 // 只留 x <= maxX 的部分
 function clipX(m, maxX) { const W = 2528, H = 1696; for (let y = 0; y < H; y++) for (let x = maxX + 1; x < W; x++) m[y * W + x] = 0; return m; }
 
@@ -206,9 +209,43 @@ function loadCv() {
     offset: alignOffset({ orig, src: plate, W, H, mask, box, search: 14 }),
   });
 
-  // shade：乾淨版要連同物件周圍多少 px 一起換（蓋住影子）
+  // 火車那張乾淨版的橋是 Gemini 重畫的（長拱橋，橋下的河往左延伸），只補火車那塊會接不起來，要整座橋連同橋下一起換：
+  //   - 兩張圖模糊後差很多的地方（重畫的細紋模糊後就不見了），只留跟火車連在一起的那一大塊；
+  //   - 加上橋面那條帶子（沿鐵軌往上到欄杆、往下到橋邊）：鐵軌本身兩張圖顏色接近，差異抓不到，不加會剩一條原圖的草地鐵軌；
+  //   - 補滿中間的洞；長椅上的人（左端上方）、火車經過的松樹（遮擋圖從原圖裁）留原圖。
+  async function bridgeRegion(plate) {
+    const roi = [545, 785, 1010, 1110];
+    const blur = (b) => sharp(b, { raw: { width: W, height: H, channels: 4 } }).blur(3).raw().toBuffer();
+    const [ob, pb] = await Promise.all([blur(orig), blur(plate)]);
+    let m = new Uint8Array(W * H);
+    for (let y = roi[1]; y <= roi[3]; y++) for (let x = roi[0]; x <= roi[2]; x++) {
+      const i = (y * W + x) * 4;
+      if (Math.abs(ob[i] - pb[i]) + Math.abs(ob[i + 1] - pb[i + 1]) + Math.abs(ob[i + 2] - pb[i + 2]) > 45) m[y * W + x] = 1;
+    }
+    m = M.keepConnected(M.close(M.union(m, M.dilate(masks.train, 4)), 4), [[880, 880]]);
+    const track = [...TRAIN_PATH.filter(([x]) => x < 1000), [1004, 833]];
+    const up = (x) => (x < 615 ? 12 : x < 640 ? 12 + (x - 615) * 0.48 : 24); // 長椅那段往上只留 12px
+    m = M.union(m, M.polyMask([...track.map(([x, y]) => [x, y - up(x)]), ...track.slice().reverse().map(([x, y]) => [x, y + 24])]));
+    // 補洞：從 ROI 外框往內灌，灌不到的空白就是洞
+    const outside = new Uint8Array(W * H), st = [];
+    for (let x = roi[0]; x <= roi[2]; x++) st.push([x, roi[1]], [x, roi[3]]);
+    for (let y = roi[1]; y <= roi[3]; y++) st.push([roi[0], y], [roi[2], y]);
+    while (st.length) {
+      const [x, y] = st.pop();
+      if (x < roi[0] || x > roi[2] || y < roi[1] || y > roi[3]) continue;
+      const i = y * W + x;
+      if (outside[i] || m[i]) continue;
+      outside[i] = 1; st.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+    }
+    for (let y = roi[1]; y <= roi[3]; y++) for (let x = roi[0]; x <= roi[2]; x++) if (!outside[y * W + x]) m[y * W + x] = 1;
+    const keep = M.union(M.polyMask([[998, 700], [1092, 664], [1096, 760], [1090, 852], [1000, 858]]), M.polyMask([[545, 950], [616, 950], [616, 1010], [545, 1022]]));
+    for (let i = 0; i < W * H; i++) if (keep[i]) m[i] = 0;
+    return { mask: m, box: roi, offset: alignOffset({ orig, src: plate, W, H, mask: m, box: roi, search: 14 }), feather: 8 };
+  }
+
+  // shade：乾淨版要連同物件周圍多少 px 一起換（蓋住影子）；region：自訂要換的範圍
   const patchPlan = {
-    ...(trainMoves ? { train: { mask: masks.train, box: M.OBJECTS.train.box, shade: 20 } } : {}),
+    ...(trainMoves ? { train: { mask: masks.train, box: M.OBJECTS.train.box, shade: 20, region: bridgeRegion } } : {}),
     car: { mask: M.union(carBody, carShadow), box: [1092, 935, 1158, 992], shade: 10, grain: 3.2 },
     boat: { mask: M.union(masks.boat, boatShadow), box: M.OBJECTS.boat.box, shade: 28, self: [-122, 4], opts: { colorFix: false } },
     couple: { mask: masks.couple, box: M.OBJECTS.couple.box, shade: 24, self: [54, 0] },
@@ -219,7 +256,7 @@ function loadCv() {
   for (const [name, p] of Object.entries(patchPlan)) {
     const plate = cleanFor[name] && plates[cleanFor[name]];
     let r = null;
-    if (plate) r = patchRegion({ out, orig, src: plate, W, H, ...plateRegion(plate, p.mask, p.box, p.shade) });
+    if (plate) r = patchRegion({ out, orig, src: plate, W, H, ...(p.region ? await p.region(plate) : plateRegion(plate, p.mask, p.box, p.shade)) });
     else if (p.self) r = patchRegion({ out, orig, src: orig, W, H, mask: p.mask, box: p.box, offset: p.self, ...(p.opts ?? {}) });
     else if (p.tile) r = addTexture(out, orig, holesD, p.box, p.tile);
     else if (p.grain) r = addGrain(out, holesD, p.box, p.grain);
@@ -280,8 +317,7 @@ function loadCv() {
   // ── 8. 幾何：路徑、錨點、摩天輪（全部換成底圖座標）────────────────────────
   const P = (pts) => pts.map(toBase);
   geo.train = {
-    // 鐵軌中心線，左下島緣 → 右上（橋上那段被火車擋住，用前後兩段連起來）
-    path: P([[552, 1045], [567, 1040], [630, 1017], [692, 992], [755, 965], [890, 893], [989, 841], [1084, 792], [1140, 772], [1220, 744], [1300, 716], [1360, 688], [1400, 670], [1422, 660]]),
+    path: P(TRAIN_PATH),
     anchor: toBase([890.5, 893.5]), // 原位時車身近側下緣中點（在中心線上）
     wheelbase: len(223),
   };

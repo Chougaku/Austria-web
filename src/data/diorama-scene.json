@@ -64,6 +64,7 @@
     }
   },
   "patched": {
+    "train": "clean",
     "car": "clean",
     "boat": "clean",
     "couple": "clean",
@@ -134,7 +135,7 @@
       487.3
     ],
     "wheelbase": 155.81,
-    "moves": false
+    "moves": true
   },
   "car": {
     "path": [
