@@ -293,7 +293,22 @@ a { color: var(--red); }
    上方兩角是五月樹、聖母教堂、史蒂芬尖塔與摩天輪，不能壓；下方只有岩層與樹根。
    位置用 %（跟著圖縮放），卡片高度自適應內容。 */
 .ov-stage { position: relative; }
-.ov-diorama { width: 100%; height: auto; display: block; animation: dioramaFloat 7.5s ease-in-out infinite; }
+.ov-diorama { position: relative; animation: dioramaFloat 7.5s ease-in-out infinite; }
+.ov-diorama > img { width: 100%; height: auto; display: block; }
+/* 會動的那一層：跟底圖同一個 1600×945 座標，一起浮動 */
+.ov-diorama-fx { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+/* 摩天輪：輪框與輻條畫在單位圓裡再縮放成橢圓，線寬要用單位圓的尺度（÷ 約 88） */
+.dio-rim { fill: none; stroke: #3d434a; stroke-width: .026; }
+.dio-rim--in { stroke-width: .015; }
+.dio-tick { stroke: #4b5158; stroke-width: .011; }
+.dio-spoke { stroke: #a6acb3; stroke-width: .0065; opacity: .85; }
+.dio-hub { fill: #3d434a; }
+.dio-wheel-back { opacity: .45; }
+.dio-hanger { stroke: #4b5158; stroke-width: .8; }
+.dio-cabin { fill: #c8342e; }
+.dio-cabin-top { fill: #f1ece4; }
+.dio-cabin-win { fill: #5b4a48; }
+.dio-leg { stroke: #4a5058; stroke-width: 3.4; stroke-linecap: round; }
 @keyframes dioramaFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
 .ov-float { box-shadow: 3px 3px 0 rgba(34, 32, 28, .09); }
 .ov-pin { position: absolute; z-index: 1; }
