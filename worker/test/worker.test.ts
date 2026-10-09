@@ -261,7 +261,7 @@ describe('新增景點／購物 POST /api/entity', () => {
   it('分類不對、沒名稱回 400，不碰 GitHub', async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
-    expect((await post({ ...spot, category: '餐廳' })).status).toBe(400);
+    expect((await post({ ...spot, category: '交通' })).status).toBe(400);
     const res = await post({ ...spot, name: '   ' });
     expect(res.status).toBe(400);
     expect((await res.json() as { detail: string }).detail).toBe('請填名稱');
@@ -303,5 +303,72 @@ describe('新增景點／購物 POST /api/entity', () => {
     const res = await post(spot);
     expect(res.status).toBe(502);
     expect((await res.json() as { reason: string }).reason).toBe('github-auth');
+  });
+});
+
+describe('新增出發前待辦 POST /api/todo', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const notes = '---\ntitle: 行程筆記\n---\n\n## ✅ 待辦（後續可繼續補）\n\n- [ ] 訂機票\n- [x] 辦護照\n\n## 筆記\n\n自由記錄\n';
+  const post = (text: unknown) => app.request('/api/todo', {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+  }, itinEnv);
+
+  it('接在最後一個勾選框後面、帶 sha，不動筆記段落', async () => {
+    let put: { content: string; sha: string; message: string } | null = null;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      expect(url).toContain(encodeURI('Austria Trip/行程筆記.md'));
+      if (!init?.method) return new Response(JSON.stringify({ content: b64(notes), sha: 'abc' }), { status: 200 });
+      put = JSON.parse(init.body as string);
+      return new Response('{}', { status: 200 });
+    }));
+    const res = await post('  買歐元\n現金 ');
+    expect(res.status).toBe(201);
+    expect(put!.sha).toBe('abc');
+    expect(put!.message).toBe('feat(todo): 從儀表板新增待辦「買歐元 現金」');
+    expect(unb64(put!.content)).toBe(notes.replace('- [x] 辦護照\n', '- [x] 辦護照\n- [ ] 買歐元 現金\n'));
+  });
+
+  it('同一句已經在清單裡 → 409；空白 → 400', async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ content: b64(notes), sha: 'abc' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await post('辦護照')).status).toBe(409);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((await post('  ')).status).toBe(400);
+  });
+
+  it('檔案剛被改過（sha 對不上）→ 409', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => init?.method
+      ? new Response('{}', { status: 409 })
+      : new Response(JSON.stringify({ content: b64(notes), sha: 'abc' }), { status: 200 })));
+    expect(await (await post('買歐元')).json()).toEqual({ error: 'sha conflict' });
+  });
+});
+
+describe('新增攻略 POST /api/guide', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const post = (body: unknown) => app.request('/api/guide', {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }, itinEnv);
+
+  it('在 原始資料/別人行程/ 建新檔，frontmatter 帶作者與網址、內容保留換行', async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return init?.method ? new Response('{}', { status: 201 }) : new Response('{}', { status: 404 });
+    }));
+    const res = await post({ title: '維也納咖啡館: 私房清單', author: '小明', url: 'https://example.com/a', body: '## 必吃\r\n- Café Central\n' });
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ ok: true, id: '維也納咖啡館 私房清單' });
+    expect(calls[0].url).toContain(encodeURI('原始資料/別人行程/維也納咖啡館 私房清單.md'));
+    const md = unb64(JSON.parse(calls[1].init!.body as string).content);
+    expect(md).toContain('author: "小明"');
+    expect(md).toContain('source: "https://example.com/a"');
+    expect(md).toContain('\n## 必吃\n- Café Central\n');
+  });
+
+  it('網址不是 http(s)、沒內容回 400', async () => {
+    vi.stubGlobal('fetch', vi.fn());
+    expect((await post({ title: 'x', body: 'y', url: 'javascript:alert(1)' })).status).toBe(400);
+    expect((await post({ title: 'x', body: '  ' })).status).toBe(400);
   });
 });

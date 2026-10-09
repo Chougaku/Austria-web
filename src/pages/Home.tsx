@@ -5,6 +5,9 @@ import { CITIES, matchCity } from '../data/areas';
 import { useTripState } from '../state/store';
 import { useAuth } from '../state/auth';
 import WishList from '../components/WishList';
+import AddTodo from '../components/AddTodo';
+import { AddButton, AddedNotice } from '../components/AddFlow';
+import { useAddFlow } from '../lib/useAddFlow';
 import GuideFavCard from '../components/GuideFavCard';
 import RouteHero from '../components/RouteHero';
 import DioramaScene from '../components/DioramaScene';
@@ -14,6 +17,7 @@ import { LEG_META, shortDate, totalNights } from '../lib/trip';
 export default function Home() {
   const { todosState, toggleTodo, favCount, favs } = useTripState();
   const { canEdit, openLogin } = useAuth();
+  const addTodo = useAddFlow();
   const [wishOpen, setWishOpen] = useState(false);
   const favEntities = entities.filter((e) => favs[`fav:${e.id}`]);
   const f = overview.fields;
@@ -178,6 +182,7 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
             <div className="serif" style={{ fontSize: 18, fontWeight: 700 }}>出發前待辦</div>
             <div style={{ fontSize: 12, color: 'var(--brown)' }}>{done} / {todos.length} 完成</div>
+            {!addTodo.open && <AddButton label="待辦" onClick={addTodo.start} />}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: 10 }}>
             {todos.map((t) => {
@@ -197,6 +202,8 @@ export default function Home() {
               );
             })}
           </div>
+          <AddedNotice names={addTodo.added} />
+          {addTodo.open && <AddTodo onCancel={addTodo.cancel} onAdded={addTodo.done} />}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* 預訂狀態 */}

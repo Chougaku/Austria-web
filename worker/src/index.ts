@@ -1,6 +1,9 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
-import { entityMarkdown, fileName, parseNewEntity } from './entity';
+import { entityMarkdown, parseNewEntity } from './entity';
+import { GUIDE_DIR, guideMarkdown, parseNewGuide } from './guide';
+import { fileName, taipeiDate } from './text';
+import { TODO_PATH, insertTodo, parseTodoText } from './todo';
 
 type Bindings = {
   DB: D1Database; DASH_TOKEN: string; DASH_PASSWORD: string;
@@ -140,41 +143,75 @@ app.put('/api/itinerary', async (c) => {
   return c.json({ ok: true });
 });
 
-// 新增景點／購物：在 vault 的 wiki/entities/<分類>/ 建一個新檔。推上去後 vault 會通知網站重建。
-// 同名的檔已經存在就不動它（回 409），免得蓋掉別人在 Obsidian 寫好的內容。
-app.post('/api/entity', async (c) => {
-  const parsed = parseNewEntity(await c.req.json().catch(() => null));
-  if (typeof parsed === 'string') return c.json({ error: 'invalid entity', detail: parsed }, 400);
-  const id = `${parsed.category}/${fileName(parsed.name)}`;
-  const { api, ghHeaders } = ghContents(c.env, `wiki/entities/${id}.md`);
-
+/** 在 vault 建一個新檔。同名檔已經存在就不動它（回 409），免得蓋掉別人在 Obsidian 寫好的內容。 */
+async function createVaultFile(c: Context<{ Bindings: Bindings }>, path: string, content: string, message: string, id: string) {
+  const { api, ghHeaders } = ghContents(c.env, path);
   const getRes = await fetch(`${api}?ref=${c.env.GH_BRANCH}`, { headers: ghHeaders });
   if (getRes.ok) return c.json({ error: 'exists', id }, 409);
   if (getRes.status !== 404) {
     const detail = await getRes.text();
-    console.log('[entity] GET', getRes.status, detail);
+    console.log('[create] GET', getRes.status, detail);
     return c.json(ghError('github get failed', getRes.status, detail), 502);
   }
-
-  // 台灣日期
-  const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
   const putRes = await fetch(api, {
     method: 'PUT',
     headers: { ...ghHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      message: `feat(entity): 從儀表板新增${parsed.category}「${parsed.name}」`,
-      content: toBase64(entityMarkdown(parsed, today)),
-      branch: c.env.GH_BRANCH,
-    }),
+    body: JSON.stringify({ message, content: toBase64(content), branch: c.env.GH_BRANCH }),
   });
   // 422＝檢查完到寫入之間有人先建了同名檔
   if (putRes.status === 422) return c.json({ error: 'exists', id }, 409);
   if (!putRes.ok) {
     const detail = await putRes.text();
-    console.log('[entity] PUT', putRes.status, detail);
+    console.log('[create] PUT', putRes.status, detail);
     return c.json(ghError('github put failed', putRes.status, detail), 502);
   }
   return c.json({ ok: true, id }, 201);
+}
+
+// 新增餐廳／景點／購物：wiki/entities/<分類>/<名稱>.md。推上去後 vault 會通知網站重建。
+app.post('/api/entity', async (c) => {
+  const e = parseNewEntity(await c.req.json().catch(() => null));
+  if (typeof e === 'string') return c.json({ error: 'invalid entity', detail: e }, 400);
+  const id = `${e.category}/${fileName(e.name)}`;
+  return createVaultFile(c, `wiki/entities/${id}.md`, entityMarkdown(e, taipeiDate()),
+    `feat(entity): 從儀表板新增${e.category}「${e.name}」`, id);
+});
+
+// 新增攻略：原始資料/別人行程/<標題>.md（標題就是檔名）。
+app.post('/api/guide', async (c) => {
+  const g = parseNewGuide(await c.req.json().catch(() => null));
+  if (typeof g === 'string') return c.json({ error: 'invalid guide', detail: g }, 400);
+  const id = fileName(g.title);
+  return createVaultFile(c, `${GUIDE_DIR}/${id}.md`, guideMarkdown(g, taipeiDate()),
+    `feat(guide): 從儀表板新增攻略「${g.title}」`, id);
+});
+
+// 新增出發前待辦：行程筆記 `## ✅ 待辦` 段落最後補一行。同一句已經在清單裡回 409。
+app.post('/api/todo', async (c) => {
+  const text = parseTodoText(await c.req.json().catch(() => null));
+  if (typeof text !== 'string') return c.json({ error: 'invalid todo', detail: text.error }, 400);
+  const { api, ghHeaders } = ghContents(c.env, TODO_PATH);
+  const getRes = await fetch(`${api}?ref=${c.env.GH_BRANCH}`, { headers: ghHeaders });
+  if (!getRes.ok) {
+    const detail = await getRes.text();
+    console.log('[todo] GET', getRes.status, detail);
+    return c.json(ghError('github get failed', getRes.status, detail), 502);
+  }
+  const file = await getRes.json<{ content: string; sha: string }>();
+  const next = insertTodo(fromBase64(file.content), text);
+  if (next === null) return c.json({ error: 'exists' }, 409);
+  const putRes = await fetch(api, {
+    method: 'PUT',
+    headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: `feat(todo): 從儀表板新增待辦「${text}」`, content: toBase64(next), sha: file.sha, branch: c.env.GH_BRANCH }),
+  });
+  if (putRes.status === 409) return c.json({ error: 'sha conflict' }, 409);
+  if (!putRes.ok) {
+    const detail = await putRes.text();
+    console.log('[todo] PUT', putRes.status, detail);
+    return c.json(ghError('github put failed', putRes.status, detail), 502);
+  }
+  return c.json({ ok: true }, 201);
 });
 
 export default app;

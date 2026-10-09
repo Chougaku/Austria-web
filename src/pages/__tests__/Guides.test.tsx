@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, cleanup, screen, fireEvent } from '@testing-library/react';
+import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react';
 import Guides from '../Guides';
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn() }));
+vi.mock('../../api/add', () => api);
 import { TripStateProvider } from '../../state/store';
 
 vi.mock('../../data', () => ({
@@ -125,5 +127,30 @@ describe('Guides 典藏', () => {
     expect(screen.getByText('沒有符合的攻略')).toBeTruthy();
     fireEvent.click(screen.getByText('★ 只看典藏')); // 關閉篩選
     expect(screen.getByText('維也納美食攻略')).toBeTruthy();
+  });
+});
+
+describe('Guides 新增攻略', () => {
+  const BODY = ['## 必去', '- Café Central'].join('\n');
+  afterEach(() => { cleanup(); api.addGuide.mockReset(); });
+
+  it('標題、內容必填，網址要 http 開頭；送出帶作者與網址', async () => {
+    api.addGuide.mockResolvedValue({ id: '咖啡館清單' });
+    renderGuides();
+    fireEvent.click(screen.getByRole('button', { name: '＋ 新增攻略' }));
+    const form = screen.getByRole('form', { name: '新增攻略' });
+    fireEvent.change(screen.getByLabelText('標題（必填）'), { target: { value: '咖啡館清單' } });
+    fireEvent.submit(form);
+    expect(screen.getByRole('alert').textContent).toContain('請填內容');
+    fireEvent.change(screen.getByLabelText('內容（必填）'), { target: { value: BODY } });
+    fireEvent.change(screen.getByLabelText('原文網址'), { target: { value: 'example.com' } });
+    fireEvent.submit(form);
+    expect(screen.getByRole('alert').textContent).toContain('http');
+    expect(api.addGuide).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText('原文網址'), { target: { value: 'https://example.com/a' } });
+    fireEvent.change(screen.getByLabelText('作者／來源'), { target: { value: '小明' } });
+    fireEvent.submit(form);
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已新增「咖啡館清單」'));
+    expect(api.addGuide).toHaveBeenCalledWith({ title: '咖啡館清單', author: '小明', url: 'https://example.com/a', body: BODY });
   });
 });

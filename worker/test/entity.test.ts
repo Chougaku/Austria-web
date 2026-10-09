@@ -15,16 +15,27 @@ describe('新增實體的欄位整理', () => {
     expect(parseNewEntity({ category: '景點', name: 'x'.repeat(81) })).toBe('名稱太長（最多 80 字）');
     expect(parseNewEntity({ category: '景點', name: '***' })).toBe('名稱不能只有符號');
     expect(parseNewEntity(null)).toBe('資料格式不對');
+    expect(parseNewEntity({ category: '交通', name: 'x' })).toBe('只能新增餐廳、景點或購物');
   });
 
   it('名稱有冒號、引號也是合法 frontmatter；空欄位不寫', () => {
     const md = entityMarkdown({
       category: '景點', name: 'Schloss: "Belvedere"', type: '', city: '', location: '',
-      address: '', ticket: '', summary: '# 開頭是井號',
+      address: '', ticket: '', price: '', summary: '# 開頭是井號',
     }, '2026-10-09');
     expect(md).toContain('title: "Schloss: \\"Belvedere\\""');
     expect(md).toContain('tags: ["景點"]');
     expect(md).toContain('\n開頭是井號\n');
     expect(md).not.toContain('- 類型');
+  });
+});
+
+describe('餐廳', () => {
+  it('收價位、不收門票，價位寫進基本資訊', () => {
+    const e = parseNewEntity({ category: '餐廳', name: 'Figlmüller', price: '€20–30', ticket: '€5', location: '維也納' }) as NewEntity;
+    expect(e.ticket).toBe('');
+    const md = entityMarkdown(e, '2026-10-09');
+    expect(md).toContain('- 價位：€20–30');
+    expect(md).not.toContain('門票');
   });
 });

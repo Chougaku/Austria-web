@@ -9,6 +9,9 @@ import GuideStar from '../components/GuideStar';
 import { useTripState } from '../state/store';
 import { tokenize, matchesTokens, makeSegments, makeSnippet } from '../lib/search';
 import { useMarkText } from '../lib/useMarkText';
+import AddGuide from '../components/AddGuide';
+import { AddButton, AddedNotice } from '../components/AddFlow';
+import { useAddFlow } from '../lib/useAddFlow';
 
 function GuideCard({ g, tokens, isOpen, onToggle }: {
   g: Guide; tokens: string[]; isOpen: boolean; onToggle: () => void;
@@ -64,6 +67,7 @@ export default function Guides() {
   const { isGuideFav } = useTripState();
   const tokens = useMemo(() => tokenize(q), [q]);
   const toggle = (id: string) => setOpen((s) => ({ ...s, [id]: !s[id] }));
+  const add = useAddFlow();
 
   const hasFav = guides.some((g) => isGuideFav(g.id));
   const searched = tokens.length === 0
@@ -83,13 +87,16 @@ export default function Guides() {
         {tokens.length > 0 && (
           <span style={{ fontSize: 12.5, color: 'var(--brown)' }}>符合 {shown.length} 篇</span>
         )}
+        {!add.open && <AddButton label="攻略" onClick={add.start} />}
       </div>
+      <AddedNotice names={add.added} />
+      {add.open && <AddGuide onCancel={add.cancel} onAdded={add.done} />}
       <div style={{ fontSize: 12.5, color: 'var(--brown)' }}>
         別人分享的奧地利、慕尼黑攻略與清單（來自部落格／Threads／Google Maps），僅供參考。
       </div>
       {shown.length === 0 && (
         <div className="card" style={{ padding: '18px 20px', fontSize: 13, color: 'var(--brown)' }}>
-          沒有符合的攻略
+          {guides.length === 0 ? '還沒有攻略。按「＋ 新增攻略」貼上第一篇，或放進 vault 的 原始資料/別人行程/。' : '沒有符合的攻略'}
         </div>
       )}
       {shown.map((g) => (

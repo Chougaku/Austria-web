@@ -11,6 +11,9 @@ import { useTripState } from '../state/store';
 import { tokenize, scoreEntity, suggestFoodTypes, makeSegments } from '../lib/search';
 import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
+import AddPlace from '../components/AddPlace';
+import { AddButton, AddedNotice } from '../components/AddFlow';
+import { useAddFlow } from '../lib/useAddFlow';
 
 export default function Food() {
   const { favs } = useTripState();
@@ -21,6 +24,7 @@ export default function Food() {
   const [favOnly, setFavOnly] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const add = useAddFlow();
 
   const tokens = useMemo(() => tokenize(q), [q]);
   const suggestions = useMemo(() => suggestFoodTypes(q), [q]);
@@ -88,7 +92,10 @@ export default function Food() {
         </div>
         <Chip on={favOnly} red onClick={() => setFavOnly(!favOnly)}>♥ 只看已標記</Chip>
         <span style={{ fontSize: 12.5, color: 'var(--brown)' }}>共 {list.length} 間</span>
+        {!add.open && <AddButton label="餐廳" onClick={add.start} />}
       </div>
+      <AddedNotice names={add.added} />
+      {add.open && <AddPlace category="餐廳" onCancel={add.cancel} onAdded={add.done} />}
       <CityChips items={all} value={city} onChange={setCity} />
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
         {cats.map((c) => {

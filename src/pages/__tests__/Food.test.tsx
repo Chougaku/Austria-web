@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { TripStateProvider } from '../../state/store';
 import Food from '../Food';
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn() }));
+vi.mock('../../api/add', () => api);
 
 vi.mock('../../state/auth', () => ({ useAuth: () => ({ canEdit: true, openLogin: vi.fn() }) }));
 
@@ -95,5 +97,24 @@ describe('Food 就地搜尋', () => {
     renderFood();
     fireEvent.click(screen.getByText('♥ 只看已標記'));
     expect(screen.getByText('還沒有標記的店，去按 ♥')).toBeTruthy();
+  });
+});
+
+describe('Food 新增餐廳', () => {
+  afterEach(() => { cleanup(); api.addEntity.mockReset(); });
+
+  it('表單有價位、沒有門票，送出後顯示等待重建的提示', async () => {
+    api.addEntity.mockResolvedValue({ id: '餐廳/Figlmüller' });
+    renderFood();
+    fireEvent.click(screen.getByRole('button', { name: '＋ 新增餐廳' }));
+    expect(screen.queryByLabelText('門票')).toBeNull();
+    fireEvent.change(screen.getByLabelText('名稱（必填）'), { target: { value: 'Figlmüller' } });
+    fireEvent.change(screen.getByLabelText('價位'), { target: { value: '€20–30' } });
+    fireEvent.change(screen.getByLabelText('區域'), { target: { value: '維也納' } });
+    fireEvent.submit(screen.getByRole('form', { name: '新增餐廳' }));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已新增「Figlmüller」'));
+    expect(api.addEntity).toHaveBeenCalledWith(expect.objectContaining({
+      category: '餐廳', name: 'Figlmüller', price: '€20–30', ticket: '', city: '維也納', location: '維也納',
+    }));
   });
 });

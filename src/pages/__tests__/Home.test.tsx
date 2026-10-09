@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach, vi } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { TripStateProvider } from '../../state/store';
 import Home from '../Home';
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn() }));
+vi.mock('../../api/add', () => api);
 
 vi.mock('../../state/auth', () => ({
   useAuth: () => ({ canEdit: true, openLogin: vi.fn(), logout: vi.fn() }),
@@ -82,5 +84,30 @@ describe('Home 頁面與路線圖主視覺', () => {
     expect(screen.getByText('自駕', { selector: 'small' })).toBeTruthy();
     expect(screen.getByText('火車', { selector: 'small' })).toBeTruthy();
     expect(screen.getByText('1 / 2 已訂')).toBeTruthy();
+  });
+});
+
+describe('Home 新增出發前待辦', () => {
+  afterEach(() => { cleanup(); api.addTodo.mockReset(); });
+
+  it('按「新增待辦」出現輸入列，送出後收起並提示等待重建', async () => {
+    api.addTodo.mockResolvedValue({ id: '' });
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: '＋ 新增待辦' }));
+    fireEvent.change(screen.getByLabelText('待辦內容'), { target: { value: ' 換歐元現金 ' } });
+    fireEvent.submit(screen.getByRole('form', { name: '新增待辦' }));
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已新增「換歐元現金」'));
+    expect(api.addTodo).toHaveBeenCalledWith('換歐元現金');
+    expect(screen.queryByRole('form', { name: '新增待辦' })).toBeNull();
+  });
+
+  it('送出失敗顯示原因、輸入列留著', async () => {
+    api.addTodo.mockRejectedValue(new Error('已經有同名的待辦了'));
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: '＋ 新增待辦' }));
+    fireEvent.change(screen.getByLabelText('待辦內容'), { target: { value: '訂機票' } });
+    fireEvent.submit(screen.getByRole('form', { name: '新增待辦' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('已經有同名的待辦'));
+    expect(screen.getByRole('form', { name: '新增待辦' })).toBeTruthy();
   });
 });

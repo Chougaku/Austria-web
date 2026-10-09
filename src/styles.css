@@ -293,6 +293,16 @@ a { color: var(--red); }
 }
 .add-form-btn--primary { background: var(--red); border-color: var(--red); color: #F8F5EE; }
 .add-form-btn:disabled { opacity: .55; cursor: default; }
+.add-notice { margin: 0 0 12px; }
+.card .add-notice { margin: 12px 0 0; }
+/* 首頁待辦清單底下的單行新增 */
+.todo-add { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.todo-add input {
+  flex: 1; min-width: 0; font: inherit; font-size: 13.5px; padding: 7px 9px;
+  border: 1px solid var(--line-dark); border-radius: 6px; background: var(--card); color: var(--ink);
+}
+.todo-add-err { flex-basis: 100%; margin-top: 0; }
+@media (max-width: 640px) { .todo-add input { font-size: 16px; } }
 @media (max-width: 640px) {
   .add-form { grid-template-columns: 1fr; padding: 14px; }
   /* iOS 輸入框字小於 16px 會在聚焦時整頁放大 */
