@@ -271,6 +271,34 @@ a { color: var(--red); }
 .plan-msg--ok { background: rgba(45,106,79,.10); border-left: 3px solid var(--green); color: var(--green); }
 .plan-msg--err { background: rgba(200,16,46,.10); border-left: 3px solid var(--red); color: var(--red); }
 
+/* 新增景點／購物（景點・購物頁的分區標題旁；登入後打開表單） */
+.add-btn {
+  margin-left: auto; align-self: center; padding: 5px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer;
+  border-radius: 8px; border: 1px dashed rgba(34,32,28,.4); background: transparent; color: var(--ink);
+}
+.add-btn:hover { border-color: var(--ink); }
+.add-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; padding: 16px 18px; margin-bottom: 14px; }
+.add-form label { display: flex; flex-direction: column; gap: 5px; font-size: 11.5px; font-weight: 600; letter-spacing: .04em; color: var(--brown); }
+.add-form input, .add-form select, .add-form textarea {
+  font: inherit; font-size: 13px; font-weight: 400; letter-spacing: 0; padding: 7px 9px; min-width: 0;
+  border: 1px solid var(--line-dark); border-radius: 6px; background: var(--card); color: var(--ink);
+}
+.add-form textarea { resize: vertical; line-height: 1.5; }
+.add-form-wide { grid-column: 1 / -1; }
+.add-form-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.add-form-note { margin-right: auto; font-size: 11.5px; color: var(--brown); }
+.add-form-btn {
+  padding: 6px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; border-radius: 8px;
+  border: 1px solid rgba(34,32,28,.3); background: transparent; color: var(--ink);
+}
+.add-form-btn--primary { background: var(--red); border-color: var(--red); color: #F8F5EE; }
+.add-form-btn:disabled { opacity: .55; cursor: default; }
+@media (max-width: 640px) {
+  .add-form { grid-template-columns: 1fr; padding: 14px; }
+  /* iOS 輸入框字小於 16px 會在聚焦時整頁放大 */
+  .add-form input, .add-form select, .add-form textarea { font-size: 16px; }
+}
+
 /* 分頁切換刻意不用 View Transitions：轉場 group 偽元素的預設 250ms 幾何 morph 只覆寫
    old/new 關不掉，sticky header 會被拉出文件流做位移補間，長短差很多的頁面
    （首頁 910px vs 餐廳 3800px）還會整頁縱向拉伸。切換靠 .page-enter 淡入即可。 */

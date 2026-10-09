@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { entityMarkdown, fileName, parseNewEntity } from './entity';
 
 type Bindings = {
   DB: D1Database; DASH_TOKEN: string; DASH_PASSWORD: string;
@@ -91,18 +92,25 @@ export function ghError(error: string, status: number, detail: string) {
   return { error, reason, status, detail: detail.slice(0, 300) };
 }
 
+/** vault 裡某個檔案的 GitHub contents API 位址與標頭。 */
+function ghContents(env: Bindings, path: string) {
+  return {
+    api: `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/contents/${encodeURI(path)}`,
+    ghHeaders: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      'User-Agent': 'austria-dashboard-worker',
+      Accept: 'application/vnd.github+json',
+    },
+  };
+}
+
 app.put('/api/itinerary', async (c) => {
   const { daySectionsMarkdown } = await c.req.json<{ daySectionsMarkdown: string }>();
   if (typeof daySectionsMarkdown !== 'string' || !daySectionsMarkdown.includes('## Day ')) {
     return c.json({ error: 'invalid itinerary' }, 400);
   }
-  const { GH_OWNER, GH_REPO, GH_BRANCH, GH_ITINERARY_PATH, GITHUB_TOKEN } = c.env;
-  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURI(GH_ITINERARY_PATH)}`;
-  const ghHeaders = {
-    Authorization: `Bearer ${GITHUB_TOKEN}`,
-    'User-Agent': 'austria-dashboard-worker',
-    Accept: 'application/vnd.github+json',
-  };
+  const { GH_BRANCH, GH_ITINERARY_PATH } = c.env;
+  const { api, ghHeaders } = ghContents(c.env, GH_ITINERARY_PATH);
 
   const getRes = await fetch(`${api}?ref=${GH_BRANCH}`, { headers: ghHeaders });
   if (!getRes.ok) {
@@ -130,6 +138,43 @@ app.put('/api/itinerary', async (c) => {
     return c.json(ghError('github put failed', putRes.status, detail), 502);
   }
   return c.json({ ok: true });
+});
+
+// 新增景點／購物：在 vault 的 wiki/entities/<分類>/ 建一個新檔。推上去後 vault 會通知網站重建。
+// 同名的檔已經存在就不動它（回 409），免得蓋掉別人在 Obsidian 寫好的內容。
+app.post('/api/entity', async (c) => {
+  const parsed = parseNewEntity(await c.req.json().catch(() => null));
+  if (typeof parsed === 'string') return c.json({ error: 'invalid entity', detail: parsed }, 400);
+  const id = `${parsed.category}/${fileName(parsed.name)}`;
+  const { api, ghHeaders } = ghContents(c.env, `wiki/entities/${id}.md`);
+
+  const getRes = await fetch(`${api}?ref=${c.env.GH_BRANCH}`, { headers: ghHeaders });
+  if (getRes.ok) return c.json({ error: 'exists', id }, 409);
+  if (getRes.status !== 404) {
+    const detail = await getRes.text();
+    console.log('[entity] GET', getRes.status, detail);
+    return c.json(ghError('github get failed', getRes.status, detail), 502);
+  }
+
+  // 台灣日期
+  const today = new Date(Date.now() + 8 * 3600_000).toISOString().slice(0, 10);
+  const putRes = await fetch(api, {
+    method: 'PUT',
+    headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: `feat(entity): 從儀表板新增${parsed.category}「${parsed.name}」`,
+      content: toBase64(entityMarkdown(parsed, today)),
+      branch: c.env.GH_BRANCH,
+    }),
+  });
+  // 422＝檢查完到寫入之間有人先建了同名檔
+  if (putRes.status === 422) return c.json({ error: 'exists', id }, 409);
+  if (!putRes.ok) {
+    const detail = await putRes.text();
+    console.log('[entity] PUT', putRes.status, detail);
+    return c.json(ghError('github put failed', putRes.status, detail), 502);
+  }
+  return c.json({ ok: true, id }, 201);
 });
 
 export default app;

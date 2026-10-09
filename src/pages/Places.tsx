@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { byCategory } from '../data';
 import type { Entity } from '../data/schema';
 import Heart from '../components/Heart';
@@ -10,6 +10,9 @@ import HitText from '../components/HitText';
 import { tokenize, scoreEntity, makeSegments } from '../lib/search';
 import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
+import AddPlace from '../components/AddPlace';
+import type { AddableCategory } from '../api/entity';
+import { useAuth } from '../state/auth';
 
 export default function Places() {
   const spots = byCategory('景點');
@@ -46,10 +49,7 @@ export default function Places() {
       {!allEmpty && (
         <>
           <section>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>
-              <span className="serif" style={{ fontSize: 20, fontWeight: 800, borderLeft: '4px solid var(--red)', paddingLeft: 12 }}>景點</span>
-              <span style={{ fontSize: 12, color: 'var(--brown)' }}>{fSpots.length} 處</span>
-            </div>
+            <SectionHead category="景點" accent="var(--red)">{fSpots.length} 處</SectionHead>
             {fSpots.length === 0 && (
               <div style={{ fontSize: 12.5, color: 'var(--brown)' }}>沒有符合的景點</div>
             )}
@@ -72,7 +72,7 @@ export default function Places() {
                           <HitText segments={makeSegments(p.name, tokens)} />
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7, alignItems: 'center' }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--navy)', border: '1px solid rgba(30,53,92,.4)', borderRadius: 4, padding: '1.5px 7px' }}>{p.fields['類型'] ?? ''}</span>
+                          {p.fields['類型'] && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--navy)', border: '1px solid rgba(30,53,92,.4)', borderRadius: 4, padding: '1.5px 7px' }}>{p.fields['類型']}</span>}
                           <span style={{ fontSize: 12, color: 'var(--brown)' }}>
                             {[p.fields['位置'], p.fields['門票']].filter(Boolean).join('・')}
                           </span>
@@ -93,10 +93,7 @@ export default function Places() {
             </div>
           </section>
           <section>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>
-              <span className="serif" style={{ fontSize: 20, fontWeight: 800, borderLeft: '4px solid var(--navy)', paddingLeft: 12 }}>購物</span>
-              <span style={{ fontSize: 12, color: 'var(--brown)' }}>{fShops.length} 處</span>
-            </div>
+            <SectionHead category="購物" accent="var(--navy)">{fShops.length} 處</SectionHead>
             {fShops.length === 0 && (
               <div style={{ fontSize: 12.5, color: 'var(--brown)' }}>沒有符合的購物點</div>
             )}
@@ -129,5 +126,35 @@ export default function Places() {
         </>
       )}
     </div>
+  );
+}
+
+/** 分區標題＋「新增」：登入後打開表單，沒登入先跳登入框。送出後網站要等重建才看得到，先在標題下說一聲。 */
+function SectionHead({ category, accent, children }: { category: AddableCategory; accent: string; children: ReactNode }) {
+  const { canEdit, openLogin } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [added, setAdded] = useState<string[]>([]);
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>
+        <span className="serif" style={{ fontSize: 20, fontWeight: 800, borderLeft: `4px solid ${accent}`, paddingLeft: 12 }}>{category}</span>
+        <span style={{ fontSize: 12, color: 'var(--brown)' }}>{children}</span>
+        {!open && (
+          <button type="button" className="btn-plain add-btn" onClick={() => (canEdit ? setOpen(true) : openLogin())}>
+            ＋ 新增{category}
+          </button>
+        )}
+      </div>
+      {added.length > 0 && (
+        <div role="status" className="plan-msg plan-msg--ok" style={{ marginTop: 0, marginBottom: 12 }}>
+          <span className="plan-msg-mark" aria-hidden="true">✓</span>
+          已新增{added.map((n) => `「${n}」`).join('')}，網站重建後（約 1–2 分鐘）重新整理就會出現
+        </div>
+      )}
+      {open && (
+        <AddPlace category={category} onCancel={() => setOpen(false)}
+          onAdded={(name) => { setAdded((a) => [...a, name]); setOpen(false); }} />
+      )}
+    </>
   );
 }

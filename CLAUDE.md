@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 歐式護照風的奧地利＋慕尼黑旅遊儀表板（React 19 + TS + Vite），以 hsjinde/Osaka-web 為範本改寫。
 內容資料來自另一個 repo Austria-vault（Obsidian markdown，本機 `D:\奧地利-vault`），收藏/待辦狀態
-存 Cloudflare D1 做跨裝置同步，每日行程可在儀表板上編輯並由 Worker commit 回 vault。
+存 Cloudflare D1 做跨裝置同步；每日行程可在儀表板上編輯、景點／購物可在儀表板上新增，都由 Worker commit 回 vault。
 
 行程：暫定 2027/06/14–06/30，維也納 3 → 格拉茨 1 → 鹽湖區（住 Bad Ischl）3 → 薩爾茲堡 2 →
 因斯布魯克 2 → 慕尼黑 3 晚；維也納到因斯布魯克自駕，因斯布魯克到慕尼黑火車。
@@ -76,7 +76,9 @@ Cloudflare 與 R2 設定。
 `dayIso`（「06/15 週二」→ ISO）、`stayOnNight`（入住日 ≤ d < 退房日）、`legsOn`、`routeSegments`（相鄰城市配對總覽的移動）、
 `stayOfCity`、`todayIndex`（旅途中每日行程預設停在今天）、`LEG_META`（方式的符號與中文）、`inCity`（城市篩選）。
 
-### 行程編輯回寫（網站 → vault，唯一的反向路徑）
+### 回寫 vault（網站 → vault 的兩條反向路徑）
+
+每日行程編輯：
 
 1. `src/state/itinerary.tsx` 的 `ItineraryProvider` 管編輯狀態，變更即存 localStorage override
    （`austria-itinerary-override`，記錄 `baseBuiltAt`）。override 只在其 `baseBuiltAt` 不早於目前 `meta.builtAt` 時採用。
@@ -84,6 +86,13 @@ Cloudflare 與 R2 設定。
 3. Worker 透過 GitHub Contents API 把 `每日行程.md` 的 `## Day` 區塊整段換掉（保留前言），commit 回 Austria-vault。
    sha 衝突回 409，前端顯示「檔案已在他處變更」。
 4. vault 的 push 觸發 `repository_dispatch: vault-updated` → 本 repo 重新 build。
+
+新增景點／購物（景點・購物頁分區標題旁的「＋ 新增」，登入後才打開表單）：
+`src/components/AddPlace.tsx` → `src/api/entity.ts` 的 `addEntity` → `POST /api/entity` →
+Worker 用 `worker/src/entity.ts` 驗證欄位、寫成跟 vault 範例檔同格式的 markdown，在 `wiki/entities/<分類>/<名稱>.md` 建新檔。
+同名檔已存在回 409、不覆蓋。位置欄寫「城市 / 區域」（區域選單來自 `areas.ts`），建置時靠它歸區。
+格式要讓 `parse-entity.ts` 讀得懂，round-trip 測試在 `scripts/lib/__tests__/new-entity.test.ts`。
+網站要等 vault 觸發的重建跑完（約 1–2 分鐘）才看得到新地點。
 
 ### 狀態同步（收藏/待辦）
 
@@ -102,6 +111,7 @@ Cloudflare 與 R2 設定。
 ### Worker（`worker/src/index.ts`，Hono + D1）
 
 - 單一資料表 `state(key, value, updated_at)`（`worker/schema.sql`）。
+- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`。
 - `GET /api/state` 與 `POST /api/login` 免驗證，其餘要 `Authorization: Bearer <DASH_TOKEN>`。
 - CORS 白名單來自 `wrangler.toml` 的 `ALLOWED_ORIGINS`（逗號分隔，預設 `austria.pages.dev` 與 `chougaku.github.io`），
   本機任意 port 放行。綁自訂網域時改這裡。
@@ -133,7 +143,7 @@ push 到 main、收到 vault 的 `repository_dispatch: vault-updated`、或手�
   → `RouteHero`（手繪路線圖；手機換蛇形版）→ 住宿 6 段、移動、預訂、待辦、收藏。
   素材由 `scripts/diorama/build.cjs` 產生，動畫在 `src/lib/diorama-motion.ts`／`diorama-poses.ts`，細節見 `DESIGN.md`「立體地景」。
 - `DailyPlan`：17 天日期列（換城日標方式符號）、標題下「當天移動＋今晚住哪」、時間軸／卡片／地圖三檢視。
-- `Food` / `Places`：類型＋城市篩選（`CityChips`）。`Transport`：路段時間軸＋自駕／火車／市內三區。
+- `Food` / `Places`：類型＋城市篩選（`CityChips`）；`Places` 登入後可新增景點／購物。`Transport`：路段時間軸＋自駕／火車／市內三區。
 - `AreaMap`：Leaflet 地圖（郵戳依螢幕距離自動合併、畫路線）＋`AreaRail` 路線區域列＋周邊一日遊。
 共用小元件在 `src/components/`（`Chip`、`Heart`、`MapLink`、`Stamp`、`WishList`、`MarkdownBody`、`EntityPicker` 等）。
 

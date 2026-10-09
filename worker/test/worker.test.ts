@@ -243,3 +243,65 @@ describe('itinerary GitHub token 失效', () => {
     expect(body.status).toBe(401);
   });
 });
+
+describe('新增景點／購物 POST /api/entity', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const post = (body: unknown, headers: Record<string, string> = auth) => app.request('/api/entity', {
+    method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  }, itinEnv);
+  const spot = {
+    category: '景點', name: '霍夫堡 Hofburg', type: '宮殿', city: '維也納', location: '維也納',
+    address: 'Michaelerkuppel, 1010 Wien', ticket: '€19', summary: '哈布斯堡的冬宮。\n## 不該變成標題',
+  };
+
+  it('沒登入不能新增', async () => {
+    expect((await post(spot, {})).status).toBe(401);
+  });
+
+  it('分類不對、沒名稱回 400，不碰 GitHub', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    expect((await post({ ...spot, category: '餐廳' })).status).toBe(400);
+    const res = await post({ ...spot, name: '   ' });
+    expect(res.status).toBe(400);
+    expect((await res.json() as { detail: string }).detail).toBe('請填名稱');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('檔案不存在：建新檔（不帶 sha），內容是 vault 的實體格式', async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      if (!init?.method) return new Response('{"message":"Not Found"}', { status: 404 });
+      return new Response('{}', { status: 201 });
+    }));
+    const res = await post(spot);
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ ok: true, id: '景點/霍夫堡 Hofburg' });
+    expect(calls[0].url).toContain(`/contents/${encodeURI('wiki/entities/景點/霍夫堡 Hofburg.md')}?ref=main`);
+    const body = JSON.parse(calls[1].init!.body as string) as { content: string; sha?: string; message: string };
+    expect(body.sha).toBeUndefined();
+    expect(body.message).toBe('feat(entity): 從儀表板新增景點「霍夫堡 Hofburg」');
+    const md = unb64(body.content);
+    expect(md).toContain('title: "霍夫堡 Hofburg"');
+    expect(md).toContain('- 位置：維也納');
+    expect(md).toContain('- 門票：€19');
+    expect(md).toContain('哈布斯堡的冬宮。 ## 不該變成標題'); // 換行收掉，不會長出新段落
+  });
+
+  it('同名檔已存在 → 409，不覆蓋', async () => {
+    const fetchMock = vi.fn(async () => new Response('{"sha":"x"}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const res = await post({ ...spot, category: '購物', name: 'Manner/Stephansplatz' });
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: 'exists', id: '購物/Manner Stephansplatz' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('GitHub token 失效 → 502 且 reason=github-auth', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"message":"Bad credentials"}', { status: 401 })));
+    const res = await post(spot);
+    expect(res.status).toBe(502);
+    expect((await res.json() as { reason: string }).reason).toBe('github-auth');
+  });
+});
