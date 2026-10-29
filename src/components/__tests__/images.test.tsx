@@ -59,9 +59,9 @@ describe('新增地點加照片', () => {
     render(<AddPlace category="景點" onCancel={vi.fn()} onAdded={vi.fn()} />);
     pick('選擇照片', 'a.heic');
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('HEIC'));
-    pick('選擇照片', '1.jpg', '2.jpg', '3.jpg', '4.jpg', '5.jpg');
-    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(4));
-    expect(screen.getByRole('alert').textContent).toContain('最多 4 張');
+    pick('選擇照片', ...Array.from({ length: 11 }, (_, i) => `${i + 1}.jpg`));
+    await waitFor(() => expect(screen.getAllByRole('img')).toHaveLength(10));
+    expect(screen.getByRole('alert').textContent).toContain('最多 10 張');
     expect(screen.queryByRole('button', { name: '＋ 照片' })).toBeNull();
   });
 });

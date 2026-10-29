@@ -48,10 +48,11 @@ describe('圖片', () => {
     expect(md).toContain('## 照片\n![[20261029-3fa9c1d2.jpg]]\n![[20261029-0b1c2d3e.png]]\n');
   });
 
-  it('只收上傳時發的檔名，最多 4 張', () => {
+  it('只收上傳時發的檔名，最多 10 張', () => {
     expect(parseNewEntity({ category: '景點', name: 'x', images: ['../../secret.md'] })).toBe('圖片檔名不對');
     expect(parseNewEntity({ category: '景點', name: 'x', images: ['a]] ![[b.jpg'] })).toBe('圖片檔名不對');
-    expect(parseNewEntity({ category: '景點', name: 'x', images: Array(5).fill('20261029-3fa9c1d2.jpg') })).toBe('圖片最多 4 張');
+    expect(parseNewEntity({ category: '景點', name: 'x', images: Array(11).fill('20261029-3fa9c1d2.jpg') })).toBe('圖片最多 10 張');
+    expect(parseNewEntity({ category: '景點', name: 'x', images: Array(10).fill('20261029-3fa9c1d2.jpg') })).not.toBeTypeOf('string');
     expect(parseNewEntity({ category: '景點', name: 'x', images: 'x.jpg' })).toBe('圖片清單格式不對');
   });
 

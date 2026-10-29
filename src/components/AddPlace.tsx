@@ -5,7 +5,7 @@ import { uploadAll } from '../lib/image-file';
 import { AddFormFooter } from './AddFlow';
 import ImagePicker, { type PickedImage } from './ImagePicker';
 
-const MAX_IMAGES = 4;
+const MAX_IMAGES = 10;
 
 const HINT: Record<AddableCategory, { name: string; type: string; address: string }> = {
   餐廳: { name: '例：Figlmüller', type: '咖啡廳、維也納菜、啤酒館…', address: '例：Wollzeile 5, 1010 Wien' },

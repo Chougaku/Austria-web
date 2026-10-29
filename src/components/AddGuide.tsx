@@ -4,7 +4,7 @@ import { uploadAll } from '../lib/image-file';
 import { AddFormFooter } from './AddFlow';
 import ImagePicker, { type PickedImage } from './ImagePicker';
 
-const MAX_IMAGES = 8;
+const MAX_IMAGES = 10;
 
 /** 登入後新增攻略：在 vault 的 原始資料/別人行程/ 建一篇（標題就是檔名），網站重建後出現在攻略頁。 */
 export default function AddGuide({ onCancel, onAdded }: { onCancel: () => void; onAdded: (title: string) => void }) {

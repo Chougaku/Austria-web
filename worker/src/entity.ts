@@ -26,7 +26,7 @@ export type NewEntity = {
   images: string[];
 };
 
-export const MAX_ENTITY_IMAGES = 4;
+export const MAX_ENTITY_IMAGES = 10;
 
 const LIMITS: [Exclude<keyof NewEntity, 'images'>, string, number][] = [
   ['name', '名稱', 80], ['type', '類型', 40], ['city', '城市', 20], ['location', '位置', 60],

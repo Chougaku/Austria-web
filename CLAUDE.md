@@ -104,7 +104,8 @@ Cloudflare 與 R2 設定。
 - 照片／圖片：瀏覽器先縮圖（`src/lib/image-file.ts`：長邊 1600px、JPEG，照 EXIF 轉正，另做 320px 預覽），
   `POST /api/image` 存成 vault 的 `assets/<日期>-<8 碼亂數>.jpg`（commit 帶 `[skip ci]`，不單獨觸發重建），回傳檔名。
   - 新增表單（`ImagePicker`）：送出時才依序上傳（同時送會在同一分支互撞），已傳過的沿用檔名（改名重送不重傳），
-    檔名交給 `/api/entity`（`## 照片` 段落，最多 4 張，第一張當封面）或 `/api/guide`（接在內文後，最多 8 張）。
+    檔名交給 `/api/entity`（`## 照片` 段落，最多 10 張，第一張當封面）或 `/api/guide`（接在內文後，最多 10 張）。
+    每日行程每個時段也是最多 10 張。
     Worker 只收 `IMAGE_FILE` 樣式的檔名，免得被塞進別的 markdown。
   - 每日行程編輯（`SlotImages`）：選了就上傳，時段先用本機縮圖（data URL）預覽，按「儲存並提交」才寫進行程檔。
     取消編輯或刪掉照片，已上傳的檔還留在 vault 的 `assets/`（沒有被引用就不會出現在網站上）。

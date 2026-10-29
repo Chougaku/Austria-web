@@ -3,7 +3,7 @@ import type { SlotImage } from '../data/schema';
 import { prepareImage } from '../lib/image-file';
 import { uploadImage } from '../api/add';
 
-const MAX = 4;
+const MAX = 10;
 
 /** 每日行程的時段照片（檢視用）：點開看大圖。剛上傳、網站還沒重建的是本機縮圖，不給連結。 */
 export function SlotPhotos({ images }: { images: SlotImage[] }) {

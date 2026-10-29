@@ -5,7 +5,7 @@ import { fileName, imageEmbeds, oneLine, parseImageList, tooLong } from './text'
 export const GUIDE_DIR = '原始資料/別人行程';
 
 export type NewGuide = { title: string; author: string; url: string; body: string; images: string[] };
-export const MAX_GUIDE_IMAGES = 8;
+export const MAX_GUIDE_IMAGES = 10;
 
 const LIMITS: [Exclude<keyof NewGuide, 'images'>, string, number][] = [
   ['title', '標題', 60], ['author', '作者', 60], ['url', '網址', 500], ['body', '內容', 20000],
