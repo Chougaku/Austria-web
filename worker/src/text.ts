@@ -16,3 +16,25 @@ export function tooLong<T extends Record<string, string>>(v: T, limits: [keyof T
 
 /** 台灣日期 YYYY-MM-DD */
 export const taipeiDate = (now = Date.now()) => new Date(now + 8 * 3600_000).toISOString().slice(0, 10);
+
+/** 二進位轉 base64（GitHub contents API 要 base64）；分段轉，大圖不會撐爆 call stack。 */
+export function bytesToBase64(bytes: Uint8Array): string {
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/** 上傳圖片後拿到的檔名（見 image.ts 的 imageFileName）；只認這個樣子，免得被塞進奇怪的 markdown。 */
+export const IMAGE_FILE = /^\d{8}-[0-9a-f]{8}\.(?:jpg|png|webp)$/;
+
+/** 驗證前端送來的圖片檔名清單；不合格回一句原因。 */
+export function parseImageList(v: unknown, max: number): string[] | string {
+  if (v === undefined || v === null) return [];
+  if (!Array.isArray(v)) return '圖片清單格式不對';
+  if (v.length > max) return `圖片最多 ${max} 張`;
+  if (!v.every((f) => typeof f === 'string' && IMAGE_FILE.test(f))) return '圖片檔名不對';
+  return v as string[];
+}
+
+/** Obsidian 的圖片嵌入，一張一行。 */
+export const imageEmbeds = (files: string[]) => files.map((f) => `![[${f}]]`);

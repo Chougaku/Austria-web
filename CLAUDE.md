@@ -57,7 +57,12 @@ Cloudflare 與 R2 設定。
     `## 基本資訊`（出發/回程 YYYY-MM-DD 等欄位）、`## 住宿`（`- 城市｜MM/DD–MM/DD｜飯店或待訂｜停車｜備註`）、
     `## 移動`（`- MM/DD｜飛機/自駕/火車｜A → B｜備註`）、`## 預訂`（`- 項目｜狀態｜細節`）、`## 交通備註`
   - 待辦：`vault/Austria Trip/行程筆記.md` 的 `## ✅ 待辦`（路徑常數 `TODO_FILE`）
-  - 攻略：`vault/原始資料/別人行程/*.md`；圖片只在設了 `R2_PUBLIC_URL_PREFIX` 時才改寫成 R2 網址（key 前綴 `austria/`）
+  - 攻略：`vault/原始資料/別人行程/*.md`
+  - 圖片：實體、攻略、每日行程時段裡的 vault 圖片（`![[檔名]]`，在 `assets/` 或 `原始資料/attachments/` 裡用檔名找）
+    建置時複製進 `public/vault-img/`（gitignore，純 ASCII 檔名）跟網站一起發布，網址寫成相對路徑 `vault-img/…`。
+    設了 `R2_PUBLIC_URL_PREFIX` 時實體、攻略改走 R2（key 前綴 `austria/`，`npm run sync:images` 上傳）。
+    每日行程時段的圖片接在備註後面（`- 上午｜標題｜備註 ![[a.jpg]]`），解析成 `slot.images: { file, url }[]`，
+    `file` 是 vault 的寫法（存回用）、`url` 是網站網址。卡片封面取實體內文第一張圖（`src/lib/images.ts`）。
 - `src/data/index.ts` 把建置產出的 JSON 轉型匯出（`entities`/`days`/`todos`/`overview`/`meta`/`guides`），
   是應用程式讀資料的唯一入口，元件不直接 import JSON。
 - **這些 JSON 是產物，不是原始碼**：改資料內容要去改 vault（或用行程編輯回寫），不是改這裡的 `.json`。
@@ -96,6 +101,13 @@ Cloudflare 與 R2 設定。
 - 同名檔／同一句待辦已存在回 409、不覆蓋；檔案名稱用 `worker/src/text.ts` 的 `fileName` 清掉不能用的字元。
 - 格式要讓 `scripts/lib/parse-*.ts` 讀得懂，round-trip 測試在 `scripts/lib/__tests__/new-entity.test.ts`。
 - 網站要等 vault 觸發的重建跑完（約 1–2 分鐘）才看得到新內容，畫面上先顯示「已新增，重建後出現」。
+- 照片／圖片：瀏覽器先縮圖（`src/lib/image-file.ts`：長邊 1600px、JPEG，照 EXIF 轉正，另做 320px 預覽），
+  `POST /api/image` 存成 vault 的 `assets/<日期>-<8 碼亂數>.jpg`（commit 帶 `[skip ci]`，不單獨觸發重建），回傳檔名。
+  - 新增表單（`ImagePicker`）：送出時才依序上傳（同時送會在同一分支互撞），已傳過的沿用檔名（改名重送不重傳），
+    檔名交給 `/api/entity`（`## 照片` 段落，最多 4 張，第一張當封面）或 `/api/guide`（接在內文後，最多 8 張）。
+    Worker 只收 `IMAGE_FILE` 樣式的檔名，免得被塞進別的 markdown。
+  - 每日行程編輯（`SlotImages`）：選了就上傳，時段先用本機縮圖（data URL）預覽，按「儲存並提交」才寫進行程檔。
+    取消編輯或刪掉照片，已上傳的檔還留在 vault 的 `assets/`（沒有被引用就不會出現在網站上）。
 
 ### 狀態同步（收藏/待辦）
 
@@ -114,7 +126,7 @@ Cloudflare 與 R2 設定。
 ### Worker（`worker/src/index.ts`，Hono + D1）
 
 - 單一資料表 `state(key, value, updated_at)`（`worker/schema.sql`）。
-- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`。
+- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`、`POST /api/image`。
 - `GET /api/state` 與 `POST /api/login` 免驗證，其餘要 `Authorization: Bearer <DASH_TOKEN>`。
 - CORS 白名單來自 `wrangler.toml` 的 `ALLOWED_ORIGINS`（逗號分隔，預設 `austria.pages.dev` 與 `chougaku.github.io`），
   本機任意 port 放行。綁自訂網域時改這裡。

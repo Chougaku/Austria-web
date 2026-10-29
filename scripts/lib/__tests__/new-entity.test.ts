@@ -7,7 +7,7 @@ import { guideMarkdown } from '../../../worker/src/guide';
 import { insertTodo } from '../../../worker/src/todo';
 
 // 網站新增的內容由 Worker 寫成 markdown，下次建置時要被同一套解析器讀進來。
-const blank: Omit<NewEntity, 'category' | 'name'> = { type: '', city: '', location: '', address: '', ticket: '', price: '', summary: '' };
+const blank: Omit<NewEntity, 'category' | 'name'> = { type: '', city: '', location: '', address: '', ticket: '', price: '', summary: '', images: [] };
 
 describe('從儀表板新增的檔案讀得回來', () => {
   it('景點：欄位、簡介、區域都對得上', () => {
@@ -41,7 +41,7 @@ describe('從儀表板新增的檔案讀得回來', () => {
   });
 
   it('攻略：標題取檔名、作者與原文網址從 frontmatter 來', () => {
-    const md = guideMarkdown({ title: '維也納咖啡館', author: '小明', url: 'https://example.com/a', body: '## 必吃\n- Café Central' }, '2026-10-09');
+    const md = guideMarkdown({ title: '維也納咖啡館', author: '小明', url: 'https://example.com/a', body: '## 必吃\n- Café Central', images: [] }, '2026-10-09');
     const g = parseGuide('維也納咖啡館.md', md);
     expect(g).toMatchObject({ id: '維也納咖啡館', title: '維也納咖啡館', source: '小明', sourceUrl: 'https://example.com/a' });
     expect(g.body).toBe('## 必吃\n- Café Central');

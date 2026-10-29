@@ -112,3 +112,17 @@ export function collectEntityImageFiles(vault: string, assetRoots: string[]): Ma
   }
   return files;
 }
+
+/** 沒設 R2 時的圖床：把 vault 圖片複製進網站的 public/vault-img/，跟網站一起發布，回傳相對網址。
+ *  網站用 hash 分頁，頁面永遠在 base 路徑下，相對網址在 GitHub Pages（/Austria-web/）與 CF Pages（/）都對。
+ *  檔名沿用 entities 的純 ASCII key（含中文的路徑在部分 CDN 會出問題）。 */
+export const LOCAL_IMAGE_DIR = 'vault-img';
+export function publishLocalImage(absPath: string, publicDir: string): string {
+  const name = imageKey(absPath, 'entities').replace(/^austria\/entities\//, '');
+  const dest = path.join(publicDir, LOCAL_IMAGE_DIR, name);
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(absPath, dest);
+  }
+  return `${LOCAL_IMAGE_DIR}/${name}`;
+}

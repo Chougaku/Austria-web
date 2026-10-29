@@ -7,7 +7,8 @@ import Places from '../Places';
 const auth = vi.hoisted(() => ({ canEdit: true, openLogin: vi.fn() }));
 vi.mock('../../state/auth', () => ({ useAuth: () => auth }));
 const addEntity = vi.hoisted(() => vi.fn());
-vi.mock('../../api/add', () => ({ addEntity }));
+const uploadImage = vi.hoisted(() => vi.fn());
+vi.mock('../../api/add', () => ({ addEntity, uploadImage }));
 
 vi.mock('../../data', () => ({
   byCategory: (cat: string) => {
@@ -81,7 +82,7 @@ describe('Places 新增景點／購物', () => {
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已新增「格洛麗埃特」'));
     expect(addEntity).toHaveBeenCalledWith({
       category: '景點', name: '格洛麗埃特', type: '', city: '維也納', location: '維也納 / 美泉宮',
-      address: '', ticket: '€5', price: '', summary: '',
+      address: '', ticket: '€5', price: '', summary: '', images: [],
     });
     expect(screen.queryByRole('form', { name: '新增景點' })).toBeNull();
   });

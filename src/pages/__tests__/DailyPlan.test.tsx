@@ -17,7 +17,8 @@ vi.mock('../../data', () => ({
   days: [{
     label: 'Day 2', date: '06/16 週三', theme: '維也納', areas: ['維也納'],
     slots: [
-      { time: '上午', title: '美泉宮', note: '先預約時段票', pending: false },
+      { time: '上午', title: '美泉宮', note: '先預約時段票', pending: false,
+        images: [{ file: '20261029-3fa9c1d2.jpg', url: 'vault-img/20261029-3fa9c1d2-1234abcd.jpg' }] },
       { time: '中午', title: 'Café Sacher', note: '原創薩赫蛋糕', pending: false },
       { time: '傍晚', title: 'Manner 史蒂芬廣場店', note: '伴手禮', pending: false },
       { time: '晚上', title: '維也納 → 格拉茨', note: '自駕約 2 小時', pending: false },
@@ -181,5 +182,16 @@ describe('DailyPlan 提交回饋', () => {
 
     await screen.findByRole('status');
     expect(document.activeElement?.getAttribute('data-slot-field')).toBe('1-time');
+  });
+});
+
+describe('DailyPlan 時段照片', () => {
+  afterEach(() => cleanup());
+
+  it('有照片的時段在備註下面顯示縮圖，點開看大圖', () => {
+    renderPlan();
+    const link = slotRow('美泉宮').querySelector('.plan-imgs a');
+    expect(link?.getAttribute('href')).toBe('vault-img/20261029-3fa9c1d2-1234abcd.jpg');
+    expect(slotRow('Café Sacher').querySelector('.plan-imgs')).toBeNull();
   });
 });

@@ -7,7 +7,9 @@ import { parseItinerary } from './lib/parse-itinerary';
 import { parseTodos } from './lib/parse-todos';
 import { parseGuide } from './lib/parse-guide';
 import { buildOverview } from './lib/parse-overview';
-import { resolveGuideImage, guideImageKey, rewriteImageUrls, entityImageUrl } from './lib/guide-images';
+import {
+  resolveGuideImage, guideImageKey, rewriteImageUrls, entityImageUrl, publishLocalImage, LOCAL_IMAGE_DIR,
+} from './lib/guide-images';
 
 export { buildOverview };
 
@@ -34,10 +36,17 @@ function main() {
   const write = (name: string, data: unknown) =>
     fs.writeFileSync(path.join(out, name), JSON.stringify(data, null, 1), 'utf8');
 
-  // 圖片放在 Cloudflare R2（npm run sync:images 上傳）。還沒設 R2_PUBLIC_URL_PREFIX 時不改寫網址：
-  // vault 裡的本機圖片在網站上不會顯示，但 http 開頭的外部圖片照常。
+  // 圖片：設了 R2_PUBLIC_URL_PREFIX 就用 Cloudflare R2（npm run sync:images 上傳）；沒設就把用到的 vault 圖片
+  // 複製進 public/vault-img/ 跟網站一起發布（網站上新增、編輯時上傳的圖都存在 vault 的 assets/）。
+  // 每日行程的時段圖片一律走 public/vault-img/。http 開頭的外部圖片不動。
   const r2Base = (process.env.R2_PUBLIC_URL_PREFIX ?? '').replace(/\/+$/, '');
   const assetRoots = [path.join(vault, 'assets'), path.join(vault, '原始資料/attachments')];
+  const publicDir = path.join(import.meta.dirname, '../public');
+  fs.rmSync(path.join(publicDir, LOCAL_IMAGE_DIR), { recursive: true, force: true });
+  const localUrl = (src: string, dir: string) => {
+    const abs = resolveGuideImage(src, dir, assetRoots);
+    return abs ? publishLocalImage(abs, publicDir) : null;
+  };
 
   const errors: string[] = [];
   const entities: Entity[] = [];
@@ -47,7 +56,7 @@ function main() {
     for (const f of fs.readdirSync(dir).filter((f) => isEntityFile(cat, f))) {
       try {
         const ent = parseEntity(cat, f, read(path.join(dir, f)));
-        if (r2Base) ent.body = rewriteImageUrls(ent.body, (src) => entityImageUrl(src, dir, assetRoots, r2Base));
+        ent.body = rewriteImageUrls(ent.body, (src) => (r2Base ? entityImageUrl(src, dir, assetRoots, r2Base) : localUrl(src, dir)));
         entities.push(ent);
       } catch (e) {
         errors.push(e instanceof Error ? e.message : String(e));
@@ -64,7 +73,8 @@ function main() {
         const g = parseGuide(f, read(path.join(guidesDir, f)));
         g.body = rewriteImageUrls(g.body, (src) => {
           const abs = resolveGuideImage(src, guidesDir, assetRoots);
-          return abs && r2Base ? `${r2Base}/${guideImageKey(abs)}` : null;
+          if (!abs) return null;
+          return r2Base ? `${r2Base}/${guideImageKey(abs)}` : publishLocalImage(abs, publicDir);
         });
         guides.push(g);
       } catch (e) {
@@ -76,6 +86,14 @@ function main() {
   let days, todos, overview;
   try {
     days = parseItinerary(read(path.join(vault, 'wiki/dashboard/每日行程.md')));
+    const planDir = path.join(vault, 'wiki/dashboard');
+    for (const s of days.flatMap((d) => d.slots)) {
+      for (const img of s.images ?? []) {
+        const url = localUrl(img.file, planDir);
+        if (url) img.url = url;
+        else if (!/^https?:\/\//i.test(img.file)) console.warn(`⚠ 每日行程的圖片找不到：${img.file}`);
+      }
+    }
   } catch (e) { errors.push(String(e instanceof Error ? e.message : e)); }
   try {
     overview = buildOverview(read(path.join(vault, 'wiki/dashboard/總覽.md')));

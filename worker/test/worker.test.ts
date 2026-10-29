@@ -372,3 +372,59 @@ describe('新增攻略 POST /api/guide', () => {
     expect((await post({ title: 'x', body: '  ' })).status).toBe(400);
   });
 });
+
+describe('上傳圖片 POST /api/image', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 250, 251]);
+  const post = (body: BodyInit, headers: Record<string, string> = auth) => app.request('/api/image', {
+    method: 'POST', headers: { ...headers, 'Content-Type': 'image/jpeg' }, body,
+  }, itinEnv);
+
+  it('沒登入不能上傳', async () => {
+    expect((await post(jpeg, {})).status).toBe(401);
+  });
+
+  it('存到 assets/<日期-亂數>.jpg，內容原封不動，commit 帶 [skip ci] 不觸發重建', async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, init });
+      return init?.method ? new Response('{}', { status: 201 }) : new Response('{}', { status: 404 });
+    }));
+    const res = await post(jpeg);
+    expect(res.status).toBe(201);
+    const { id } = await res.json() as { id: string };
+    expect(id).toMatch(/^\d{8}-[0-9a-f]{8}\.jpg$/);
+    expect(calls[1].url).toContain(`/contents/assets/${id}`);
+    const body = JSON.parse(calls[1].init!.body as string) as { content: string; message: string };
+    expect(body.message).toContain('[skip ci]');
+    expect(Uint8Array.from(atob(body.content), (ch) => ch.charCodeAt(0))).toEqual(jpeg);
+  });
+
+  it('不是圖片、空的都擋下，不碰 GitHub', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const res = await post('<svg onload=alert(1)>');
+    expect(res.status).toBe(400);
+    expect((await res.json() as { detail: string }).detail).toContain('JPG');
+    expect((await post(new Uint8Array())).status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('攻略帶圖片', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it('圖片接在內文後面', async () => {
+    let put = '';
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      if (!init?.method) return new Response('{}', { status: 404 });
+      put = unb64(JSON.parse(init.body as string).content);
+      return new Response('{}', { status: 201 });
+    }));
+    const res = await app.request('/api/guide', {
+      method: 'POST', headers: { ...auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 't', body: '內文', images: ['20261029-3fa9c1d2.jpg'] }),
+    }, itinEnv);
+    expect(res.status).toBe(201);
+    expect(put).toContain('\n內文\n\n![[20261029-3fa9c1d2.jpg]]\n');
+  });
+});

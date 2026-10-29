@@ -17,11 +17,17 @@ export const EntitySchema = z.object({
 });
 export type Entity = z.infer<typeof EntitySchema>;
 
+/** 時段附的圖片。file 是 vault 裡的寫法（`![[file]]` 的檔名，或外部圖片的網址），存回 vault 用；
+    url 是網站上顯示用的網址（建置時換成 vault-img/…；編輯中剛上傳的是本機縮圖）。 */
+export const SlotImageSchema = z.object({ file: z.string().min(1), url: z.string().min(1) });
+export type SlotImage = z.infer<typeof SlotImageSchema>;
+
 export const DaySlotSchema = z.object({
   time: z.string().min(1),
   title: z.string().min(1),
   note: z.string(),
   pending: z.boolean(),
+  images: z.array(SlotImageSchema).optional(),
 });
 export const DaySchema = z.object({
   label: z.string().regex(/^Day \d+$/),

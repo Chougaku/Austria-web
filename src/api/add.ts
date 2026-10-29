@@ -18,10 +18,12 @@ export interface NewEntityInput {
   /** 餐廳才有 */
   price: string;
   summary: string;
+  /** uploadImage 拿到的檔名；第一張是卡片封面。 */
+  images: string[];
 }
 
-/** 新增攻略（原始資料/別人行程/<標題>.md）。 */
-export interface NewGuideInput { title: string; author: string; url: string; body: string }
+/** 新增攻略（原始資料/別人行程/<標題>.md）。images 接在內文後面。 */
+export interface NewGuideInput { title: string; author: string; url: string; body: string; images: string[] }
 
 type ErrorBody = { error?: string; reason?: string; status?: number; detail?: string };
 
@@ -37,13 +39,13 @@ export function addErrorMessage(status: number, body: ErrorBody | null, what: st
   return `新增失敗（HTTP ${status}）`;
 }
 
-async function post(path: string, payload: unknown, what: string): Promise<{ id: string }> {
+async function post(path: string, payload: BodyInit, contentType: string, what: string): Promise<{ id: string }> {
   let res: Response;
   try {
     res = await fetch(`${apiBase()}${path}`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${getToken() ?? ''}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      headers: { Authorization: `Bearer ${getToken() ?? ''}`, 'Content-Type': contentType },
+      body: payload,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (e) {
@@ -56,6 +58,12 @@ async function post(path: string, payload: unknown, what: string): Promise<{ id:
   return { id: body?.id ?? '' };
 }
 
-export const addEntity = (input: NewEntityInput) => post('/api/entity', input, '地點');
-export const addGuide = (input: NewGuideInput) => post('/api/guide', input, '攻略');
-export const addTodo = (text: string) => post('/api/todo', { text }, '待辦');
+const postJson = (path: string, payload: unknown, what: string) => post(path, JSON.stringify(payload), 'application/json', what);
+
+export const addEntity = (input: NewEntityInput) => postJson('/api/entity', input, '地點');
+export const addGuide = (input: NewGuideInput) => postJson('/api/guide', input, '攻略');
+export const addTodo = (text: string) => postJson('/api/todo', { text }, '待辦');
+
+/** 上傳一張（已縮好的）圖片到 vault 的 assets/，回傳檔名（id）給新增或行程用 `![[檔名]]` 嵌入。
+    這一步不會觸發網站重建，要等後面的新增／存檔送出才一起重建。 */
+export const uploadImage = (blob: Blob) => post('/api/image', blob, blob.type || 'image/jpeg', '圖片');

@@ -12,6 +12,8 @@ import { tokenize, scoreEntity, suggestFoodTypes, makeSegments } from '../lib/se
 import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
+import Cover from '../components/Cover';
+import { imagesIn } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import { useAddFlow } from '../lib/useAddFlow';
 
@@ -113,7 +115,9 @@ export default function Food() {
           const note = r.fields['備註'] && r.fields['備註'] !== '-' ? r.fields['備註'] : r.summary;
           return (
             <Reveal key={r.id} index={i}>
-            <div className="card" style={{ padding: '16px 18px', display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <div className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Cover urls={imagesIn(r.body)} alt={r.name} />
+              <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
               <Stamp rating={r.rating} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="serif" style={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.35 }}>
@@ -132,6 +136,7 @@ export default function Food() {
                 )}
               </div>
               <Heart entityId={r.id} />
+              </div>
             </div>
             </Reveal>
           );

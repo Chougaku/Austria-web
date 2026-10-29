@@ -1,7 +1,11 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { AREAS, CITIES, cityOfArea } from '../data/areas';
-import { addEntity, type AddableCategory } from '../api/add';
+import { addEntity, uploadImage, type AddableCategory } from '../api/add';
+import { uploadAll } from '../lib/image-file';
 import { AddFormFooter } from './AddFlow';
+import ImagePicker, { type PickedImage } from './ImagePicker';
+
+const MAX_IMAGES = 4;
 
 const HINT: Record<AddableCategory, { name: string; type: string; address: string }> = {
   餐廳: { name: '例：Figlmüller', type: '咖啡廳、維也納菜、啤酒館…', address: '例：Wollzeile 5, 1010 Wien' },
@@ -22,7 +26,10 @@ export default function AddPlace({ category, onCancel, onAdded }: {
   const [ticket, setTicket] = useState('');
   const [price, setPrice] = useState('');
   const [summary, setSummary] = useState('');
+  const [images, setImages] = useState<PickedImage[]>([]);
   const [busy, setBusy] = useState(false);
+  const [busyText, setBusyText] = useState<string>();
+  const uploaded = useRef(new Map<number, string>());
   const [error, setError] = useState<string | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   // 景點填門票、餐廳填價位，購物兩個都沒有
@@ -40,9 +47,12 @@ export default function AddPlace({ category, onCancel, onAdded }: {
     const location = a ? (a.isCity ? city : `${city} / ${a.name}`) : '';
     setBusy(true); setError(null);
     try {
+      // 照片先一張張傳進 vault，拿到檔名再建地點
+      const files = await uploadAll(images, uploadImage, uploaded.current, (i) => setBusyText(`上傳照片 ${i + 1}/${images.length}…`));
+      setBusyText('新增中…');
       await addEntity({
         category, name: title, type, city, location, address,
-        ticket: category === '景點' ? ticket : '', price: category === '餐廳' ? price : '', summary,
+        ticket: category === '景點' ? ticket : '', price: category === '餐廳' ? price : '', summary, images: files,
       });
       onAdded(title);
     } catch (err) {
@@ -90,7 +100,11 @@ export default function AddPlace({ category, onCancel, onAdded }: {
         <textarea value={summary} onChange={(e) => setSummary(e.target.value)} disabled={busy} rows={2}
           placeholder="一兩句話，會顯示在卡片上" />
       </label>
-      <AddFormFooter error={error} busy={busy} submitLabel={`新增${category}`} onCancel={onCancel} />
+      <div className="add-form-wide add-form-field">
+        <span>照片（最多 {MAX_IMAGES} 張，第一張當卡片封面）</span>
+        <ImagePicker images={images} onChange={setImages} max={MAX_IMAGES} disabled={busy} />
+      </div>
+      <AddFormFooter error={error} busy={busy} busyText={busyText} submitLabel={`新增${category}`} onCancel={onCancel} />
     </form>
   );
 }

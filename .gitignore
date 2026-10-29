@@ -45,3 +45,6 @@ untitled/
 
 # AI 生成的原圖（處理後的 public/diorama-*.webp 才進 repo）
 Gemini_Generated_Image_*
+
+# 建置時從 vault 複製的圖片（scripts/build-data.ts）
+public/vault-img/

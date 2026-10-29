@@ -2,7 +2,8 @@ import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { entityMarkdown, parseNewEntity } from './entity';
 import { GUIDE_DIR, guideMarkdown, parseNewGuide } from './guide';
-import { fileName, taipeiDate } from './text';
+import { IMAGE_DIR, MAX_IMAGE_BYTES, imageFileName, sniffImage } from './image';
+import { bytesToBase64, fileName, taipeiDate } from './text';
 import { TODO_PATH, insertTodo, parseTodoText } from './todo';
 
 type Bindings = {
@@ -70,12 +71,7 @@ app.put('/api/state/:key', async (c) => {
   return c.json({ ok: true });
 });
 
-function toBase64(str: string): string {
-  const bytes = new TextEncoder().encode(str);
-  let bin = '';
-  for (const b of bytes) bin += String.fromCharCode(b);
-  return btoa(bin);
-}
+const toBase64 = (str: string) => bytesToBase64(new TextEncoder().encode(str));
 function fromBase64(b64: string): string {
   const bin = atob(b64.replace(/\n/g, ''));
   const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
@@ -144,7 +140,7 @@ app.put('/api/itinerary', async (c) => {
 });
 
 /** 在 vault 建一個新檔。同名檔已經存在就不動它（回 409），免得蓋掉別人在 Obsidian 寫好的內容。 */
-async function createVaultFile(c: Context<{ Bindings: Bindings }>, path: string, content: string, message: string, id: string) {
+async function createVaultFile(c: Context<{ Bindings: Bindings }>, path: string, base64: string, message: string, id: string) {
   const { api, ghHeaders } = ghContents(c.env, path);
   const getRes = await fetch(`${api}?ref=${c.env.GH_BRANCH}`, { headers: ghHeaders });
   if (getRes.ok) return c.json({ error: 'exists', id }, 409);
@@ -156,7 +152,7 @@ async function createVaultFile(c: Context<{ Bindings: Bindings }>, path: string,
   const putRes = await fetch(api, {
     method: 'PUT',
     headers: { ...ghHeaders, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, content: toBase64(content), branch: c.env.GH_BRANCH }),
+    body: JSON.stringify({ message, content: base64, branch: c.env.GH_BRANCH }),
   });
   // 422＝檢查完到寫入之間有人先建了同名檔
   if (putRes.status === 422) return c.json({ error: 'exists', id }, 409);
@@ -173,7 +169,7 @@ app.post('/api/entity', async (c) => {
   const e = parseNewEntity(await c.req.json().catch(() => null));
   if (typeof e === 'string') return c.json({ error: 'invalid entity', detail: e }, 400);
   const id = `${e.category}/${fileName(e.name)}`;
-  return createVaultFile(c, `wiki/entities/${id}.md`, entityMarkdown(e, taipeiDate()),
+  return createVaultFile(c, `wiki/entities/${id}.md`, toBase64(entityMarkdown(e, taipeiDate())),
     `feat(entity): 從儀表板新增${e.category}「${e.name}」`, id);
 });
 
@@ -182,8 +178,21 @@ app.post('/api/guide', async (c) => {
   const g = parseNewGuide(await c.req.json().catch(() => null));
   if (typeof g === 'string') return c.json({ error: 'invalid guide', detail: g }, 400);
   const id = fileName(g.title);
-  return createVaultFile(c, `${GUIDE_DIR}/${id}.md`, guideMarkdown(g, taipeiDate()),
+  return createVaultFile(c, `${GUIDE_DIR}/${id}.md`, toBase64(guideMarkdown(g, taipeiDate())),
     `feat(guide): 從儀表板新增攻略「${g.title}」`, id);
+});
+
+// 上傳圖片：存到 vault 的 assets/<日期-亂數>.jpg，回傳檔名讓新增／行程用 ![[檔名]] 嵌入。
+// commit 訊息帶 [skip ci] 不觸發網站重建：圖片一定跟著一筆新增或行程存檔一起送，那筆 commit 才重建，免得一張圖重建一次。
+app.post('/api/image', async (c) => {
+  const bytes = new Uint8Array(await c.req.arrayBuffer());
+  if (bytes.length === 0) return c.json({ error: 'invalid image', detail: '沒有收到圖片' }, 400);
+  if (bytes.length > MAX_IMAGE_BYTES) return c.json({ error: 'invalid image', detail: '圖片太大（最多 6 MB）' }, 400);
+  const ext = sniffImage(bytes);
+  if (!ext) return c.json({ error: 'invalid image', detail: '只收 JPG、PNG、WebP 圖片' }, 400);
+  const file = imageFileName(ext, taipeiDate(), crypto.randomUUID());
+  return createVaultFile(c, `${IMAGE_DIR}/${file}`, bytesToBase64(bytes),
+    `chore(image): 從儀表板上傳圖片 ${file} [skip ci]`, file);
 });
 
 // 新增出發前待辦：行程筆記 `## ✅ 待辦` 段落最後補一行。同一句已經在清單裡回 409。

@@ -10,9 +10,13 @@ function serializeDay(d: Day): string {
   if (d.areas.length) lines.push(`> 區域：${d.areas.join('、')}`);
   lines.push('');
   for (const s of d.slots) {
+    // 圖片接在備註後面：vault 裡的檔案寫成 Obsidian 嵌入，外部網址寫成標準 markdown 圖片
+    const tail = [s.note, ...(s.images ?? []).map(imageMd)].filter(Boolean).join(' ');
     if (s.pending) lines.push(`- ${s.time}｜（待安排）`);
-    else if (s.note) lines.push(`- ${s.time}｜${s.title}｜${s.note}`);
+    else if (tail) lines.push(`- ${s.time}｜${s.title}｜${tail}`);
     else lines.push(`- ${s.time}｜${s.title}`);
   }
   return lines.join('\n');
 }
+
+const imageMd = ({ file }: { file: string }) => (/^https?:\/\//i.test(file) ? `![](${file})` : `![[${file}]]`);

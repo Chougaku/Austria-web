@@ -11,6 +11,8 @@ import { tokenize, scoreEntity, makeSegments } from '../lib/search';
 import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
+import Cover from '../components/Cover';
+import { imagesIn } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import type { AddableCategory } from '../api/add';
 import { useAddFlow } from '../lib/useAddFlow';
@@ -56,16 +58,10 @@ export default function Places() {
             )}
             <div className="cards-grid">
               {fSpots.map((p, i) => {
-                const matchImg = p.body?.match(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/);
-                const coverUrl = matchImg ? matchImg[1] : null;
                 return (
                   <Reveal key={p.id} index={i}>
                   <div className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {coverUrl && (
-                      <div style={{ width: '100%', height: 130, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
-                        <img src={coverUrl} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
-                    )}
+                    <Cover urls={imagesIn(p.body)} alt={p.name} />
                     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', width: '100%' }}>
                       <Stamp rating={p.rating} />
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -101,7 +97,9 @@ export default function Places() {
             <div className="cards-grid">
               {fShops.map((p, i) => (
                 <Reveal key={p.id} index={i}>
-                <div className="card" style={{ padding: '16px 18px', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                <div className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Cover urls={imagesIn(p.body)} alt={p.name} />
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                       <span className="serif" style={{ fontSize: 15.5, fontWeight: 700 }}>
@@ -119,6 +117,7 @@ export default function Places() {
                     </div>
                   </div>
                   <Heart entityId={p.id} />
+                  </div>
                 </div>
                 </Reveal>
               ))}

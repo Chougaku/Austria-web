@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react';
 import Guides from '../Guides';
-const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn() }));
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn() }));
 vi.mock('../../api/add', () => api);
 import { TripStateProvider } from '../../state/store';
 
@@ -151,6 +151,6 @@ describe('Guides 新增攻略', () => {
     fireEvent.change(screen.getByLabelText('作者／來源'), { target: { value: '小明' } });
     fireEvent.submit(form);
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已新增「咖啡館清單」'));
-    expect(api.addGuide).toHaveBeenCalledWith({ title: '咖啡館清單', author: '小明', url: 'https://example.com/a', body: BODY });
+    expect(api.addGuide).toHaveBeenCalledWith({ title: '咖啡館清單', author: '小明', url: 'https://example.com/a', body: BODY, images: [] });
   });
 });

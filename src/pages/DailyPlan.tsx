@@ -7,6 +7,7 @@ import TripMap from '../components/TripMap';
 import Reveal from '../components/Reveal';
 import EntityPicker from '../components/EntityPicker';
 import MapLink from '../components/MapLink';
+import SlotImages, { SlotPhotos } from '../components/SlotImages';
 import { slotKind, slotArea, slotMapTarget, isMarked, SLOT_KIND_META, MARKED_KINDS } from '../lib/slot-kind';
 import { linkifyNote } from '../lib/linkify';
 import { ItineraryValidationError } from '../lib/itinerary-validate';
@@ -204,6 +205,7 @@ export default function DailyPlan() {
                         ))}
                       </div>
                     )}
+                    {!s.pending && s.images?.length ? <SlotPhotos images={s.images} /> : null}
                   </div>
                 );
               })}
@@ -390,6 +392,8 @@ function EditableSlots({ dayIdx, slots, onUpdate, onAdd, onRemove, onMove }: {
             <button className="btn-plain" title="下移" onClick={() => onMove(dayIdx, i, 1)} style={iconBtn}>↓</button>
             <button className="btn-plain" title="刪除" onClick={() => onRemove(dayIdx, i)} style={{ ...iconBtn, color: 'var(--red)' }}>✕</button>
           </div>
+          <SlotImages images={s.images ?? []} disabled={s.pending}
+            onChange={(images) => onUpdate(dayIdx, i, { images })} />
         </div>
       ))}
       <button className="btn-plain" onClick={() => onAdd(dayIdx)} style={{

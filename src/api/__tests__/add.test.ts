@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { addEntity, addGuide, addTodo, type NewEntityInput } from '../add';
 
 const input: NewEntityInput = {
-  category: '景點', name: '霍夫堡', type: '宮殿', city: '維也納', location: '維也納', address: '', ticket: '', price: '', summary: '',
+  category: '景點', name: '霍夫堡', type: '宮殿', city: '維也納', location: '維也納', address: '', ticket: '', price: '', summary: '', images: [],
 };
 
 beforeEach(() => {
@@ -30,7 +30,7 @@ describe('從儀表板新增', () => {
     const fetchMock = ok();
     vi.stubGlobal('fetch', fetchMock);
     await addTodo('換歐元');
-    await addGuide({ title: 't', author: '', url: '', body: 'b' });
+    await addGuide({ title: 't', author: '', url: '', body: 'b', images: [] });
     expect(fetchMock.mock.calls.map(([u]) => u)).toEqual(['https://api.test/api/todo', 'https://api.test/api/guide']);
     expect(JSON.parse(fetchMock.mock.calls[0][1]!.body as string)).toEqual({ text: '換歐元' });
   });
@@ -42,7 +42,7 @@ describe('從儀表板新增', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'sha conflict' }), { status: 409 })));
     await expect(addTodo('x')).rejects.toThrow('檔案剛被改過');
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })));
-    await expect(addGuide({ title: 't', author: '', url: '', body: 'b' })).rejects.toThrow('重新登入');
+    await expect(addGuide({ title: 't', author: '', url: '', body: 'b', images: [] })).rejects.toThrow('重新登入');
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ detail: '名稱太長（最多 80 字）' }), { status: 400 })));
     await expect(addEntity(input)).rejects.toThrow('名稱太長');
   });

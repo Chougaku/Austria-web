@@ -1,6 +1,6 @@
 // 從儀表板新增餐廳／景點／購物：驗證前端送來的欄位，產生跟 vault 範例檔同格式的 markdown。
 // 格式要讓 scripts/lib/parse-entity.ts 讀得懂：frontmatter 的 title、`## 基本資訊` 底下的「- 欄位：值」。
-import { fileName, oneLine, tooLong } from './text';
+import { fileName, imageEmbeds, oneLine, parseImageList, tooLong } from './text';
 
 /** 網站上能新增的分類；交通、住宿等其他分類還是直接在 vault 寫。 */
 export const ADDABLE = ['餐廳', '景點', '購物'] as const;
@@ -22,9 +22,13 @@ export type NewEntity = {
   price: string;
   /** 一段簡介，卡片上顯示的那段。 */
   summary: string;
+  /** 已上傳到 vault assets/ 的圖片檔名；第一張是卡片封面。 */
+  images: string[];
 };
 
-const LIMITS: [keyof NewEntity, string, number][] = [
+export const MAX_ENTITY_IMAGES = 4;
+
+const LIMITS: [Exclude<keyof NewEntity, 'images'>, string, number][] = [
   ['name', '名稱', 80], ['type', '類型', 40], ['city', '城市', 20], ['location', '位置', 60],
   ['address', '地址', 160], ['ticket', '門票', 80], ['price', '價位', 40], ['summary', '簡介', 600],
 ];
@@ -47,9 +51,14 @@ export function parseNewEntity(body: unknown): NewEntity | string {
     ticket: category === '景點' ? oneLine(b.ticket) : '',
     price: category === '餐廳' ? oneLine(b.price) : '',
     summary: oneLine(b.summary),
+    images: [],
   };
   if (!e.name) return '請填名稱';
-  const long = tooLong(e, LIMITS);
+  const images = parseImageList(b.images, MAX_ENTITY_IMAGES);
+  if (typeof images === 'string') return images;
+  e.images = images;
+  const { images: _, ...text } = e;
+  const long = tooLong(text, LIMITS);
   if (long) return long;
   if (!fileName(e.name)) return '名稱不能只有符號';
   return e;
@@ -74,6 +83,8 @@ export function entityMarkdown(e: NewEntity, today: string): string {
     '## 基本資訊',
     ...info,
     '',
+    // 照片放自己的段落：放在簡介那段會被解析器當成卡片上的文字
+    ...(e.images.length ? ['## 照片', ...imageEmbeds(e.images), ''] : []),
     '## 來源',
     '- 從儀表板新增',
     '',
