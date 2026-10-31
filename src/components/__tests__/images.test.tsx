@@ -86,11 +86,15 @@ describe('每日行程時段照片', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  it('檢視：正式圖點開看大圖，剛上傳的本機縮圖不給連結', () => {
-    render(<SlotPhotos images={[{ file: 'a.jpg', url: 'vault-img/a-1234abcd.jpg' }, { file: 'b.jpg', url: 'data:image/jpeg;base64,x' }]} />);
-    const links = screen.getAllByRole('link');
-    expect(links).toHaveLength(1);
-    expect(links[0].getAttribute('href')).toBe('vault-img/a-1234abcd.jpg');
-    expect(screen.getAllByRole('img')).toHaveLength(2);
+  it('檢視：點縮圖全螢幕看、停在點的那張，剛上傳的本機縮圖也看得了；Esc 關閉', () => {
+    render(<SlotPhotos title="美泉宮" images={[{ file: 'a.jpg', url: 'vault-img/a-1234abcd.jpg' }, { file: 'b.jpg', url: 'data:image/jpeg;base64,x' }]} />);
+    fireEvent.click(screen.getByRole('button', { name: '放大看「美泉宮」照片 2' }));
+    const viewer = screen.getByRole('dialog', { name: '照片' });
+    expect(viewer.textContent).toContain('2 / 2');
+    expect(viewer.querySelectorAll('img')).toHaveLength(2);
+    fireEvent.keyDown(document, { key: 'ArrowLeft' });
+    expect(viewer.textContent).toContain('1 / 2');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

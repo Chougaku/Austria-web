@@ -188,10 +188,12 @@ describe('DailyPlan 提交回饋', () => {
 describe('DailyPlan 時段照片', () => {
   afterEach(() => cleanup());
 
-  it('有照片的時段在備註下面顯示縮圖，點開看大圖', () => {
+  it('有照片的時段在備註下面顯示縮圖，點開全螢幕看', () => {
     renderPlan();
-    const link = slotRow('美泉宮').querySelector('.plan-imgs a');
-    expect(link?.getAttribute('href')).toBe('vault-img/20261029-3fa9c1d2-1234abcd.jpg');
+    expect(slotRow('美泉宮').querySelector('.plan-imgs img')?.getAttribute('src')).toBe('vault-img/20261029-3fa9c1d2-1234abcd.jpg');
     expect(slotRow('Café Sacher').querySelector('.plan-imgs')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '放大看「美泉宮」照片 1' }));
+    expect(screen.getByRole('dialog', { name: '照片' }).querySelector('img')?.getAttribute('src'))
+      .toBe('vault-img/20261029-3fa9c1d2-1234abcd.jpg');
   });
 });

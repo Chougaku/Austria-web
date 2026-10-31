@@ -13,6 +13,9 @@ import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
 import Cover from '../components/Cover';
 import EntityActions from '../components/EntityActions';
+import EntityDetail from '../components/EntityDetail';
+import { onCardClick } from '../lib/card-click';
+import type { Entity } from '../data/schema';
 import { deletedKey, useDeleted } from '../lib/deleted';
 import { imagesIn } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
@@ -25,6 +28,8 @@ export default function Food() {
   const all = useMemo(() => byCategory('餐廳').filter((r) => !deleted.has(deletedKey.entity(r.id))), [deleted]);
   const [cat, setCat] = useState('全部');
   const [city, setCity] = useState<CityFilter>('all');
+  // 點卡片打開的詳細頁（start＝從封面第幾張點進來）
+  const [detail, setDetail] = useState<{ entity: Entity; start: number } | null>(null);
   const [q, setQ] = useState('');
   const [favOnly, setFavOnly] = useState(false);
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -118,13 +123,16 @@ export default function Food() {
           const note = r.fields['備註'] && r.fields['備註'] !== '-' ? r.fields['備註'] : r.summary;
           return (
             <Reveal key={r.id} index={i}>
-            <div className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Cover urls={imagesIn(r.body)} alt={r.name} />
+            <div className="card card--tap" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}
+              onClick={onCardClick(() => setDetail({ entity: r, start: 0 }))}>
+              <Cover urls={imagesIn(r.body)} alt={r.name} onOpen={(i) => setDetail({ entity: r, start: i })} />
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
               <Stamp rating={r.rating} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="serif" style={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.35 }}>
-                  <HitText segments={makeSegments(r.name, tokens)} />
+                  <button type="button" className="btn-plain card-title-btn" onClick={() => setDetail({ entity: r, start: 0 })}>
+                    <HitText segments={makeSegments(r.name, tokens)} />
+                  </button>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7, alignItems: 'center' }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--navy)', border: '1px solid rgba(30,53,92,.4)', borderRadius: 4, padding: '1.5px 7px' }}>{r.fields['類型'] ?? '未分類'}</span>
@@ -145,6 +153,7 @@ export default function Food() {
           );
         })}
       </div>
+      {detail && <EntityDetail entity={detail.entity} start={detail.start} onClose={() => setDetail(null)} />}
     </div>
   );
 }

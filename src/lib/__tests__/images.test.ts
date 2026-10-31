@@ -23,3 +23,13 @@ describe('uploadAll', () => {
     expect(done.get(3)).toBe('file-3');
   });
 });
+
+describe('withoutImages（詳細頁的內文）', () => {
+  it('拿掉「## 照片」整段與內文裡的圖，其他段落留著', async () => {
+    const { withoutImages } = await import('../images');
+    const body = '好吃的炸肉排。\n\n## 基本資訊\n- 類型：維也納菜\n\n## 照片\n![](vault-img/a.jpg)\n![](vault-img/b.jpg)\n\n## 來源\n- 從儀表板新增';
+    expect(withoutImages(body)).toBe('好吃的炸肉排。\n\n## 基本資訊\n- 類型：維也納菜\n\n## 來源\n- 從儀表板新增');
+    expect(withoutImages('簡介\n\n## 照片\n![](vault-img/a.jpg)')).toBe('簡介');
+    expect(withoutImages('文字 ![](x.jpg) 結尾')).toBe('文字  結尾');
+  });
+});

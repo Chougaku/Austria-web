@@ -2,20 +2,23 @@ import { useRef, useState } from 'react';
 import type { SlotImage } from '../data/schema';
 import { prepareImage } from '../lib/image-file';
 import { uploadImage } from '../api/add';
+import PhotoViewer from './PhotoViewer';
 
 const MAX = 10;
 
-/** 每日行程的時段照片（檢視用）：點開看大圖。剛上傳、網站還沒重建的是本機縮圖，不給連結。 */
-export function SlotPhotos({ images }: { images: SlotImage[] }) {
+/** 每日行程的時段照片（檢視用）：點縮圖全螢幕看，同一個時段的照片可以左右滑。 */
+export function SlotPhotos({ images, title }: { images: SlotImage[]; title: string }) {
+  const [viewing, setViewing] = useState<number | null>(null);
   return (
     <div className="plan-imgs">
-      {images.map((img, i) => (img.url.startsWith('data:')
-        ? <img key={i} src={img.url} alt={`照片 ${i + 1}`} />
-        : (
-          <a key={i} href={img.url} target="_blank" rel="noreferrer" aria-label={`看大圖：照片 ${i + 1}`}>
-            <img src={img.url} alt={`照片 ${i + 1}`} loading="lazy" />
-          </a>
-        )))}
+      {images.map((img, i) => (
+        <button key={i} type="button" className="btn-plain" aria-label={`放大看「${title}」照片 ${i + 1}`} onClick={() => setViewing(i)}>
+          <img src={img.url} alt={`${title} 照片 ${i + 1}`} loading="lazy" />
+        </button>
+      ))}
+      {viewing !== null && (
+        <PhotoViewer urls={images.map((img) => img.url)} alt={title} start={viewing} onClose={() => setViewing(null)} />
+      )}
     </div>
   );
 }

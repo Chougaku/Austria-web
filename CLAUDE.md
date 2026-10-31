@@ -168,6 +168,10 @@ push 到 main、收到 vault 的 `repository_dispatch: vault-updated`、或手�
   素材由 `scripts/diorama/build.cjs` 產生，動畫在 `src/lib/diorama-motion.ts`／`diorama-poses.ts`，細節見 `DESIGN.md`「立體地景」。
 - `DailyPlan`：17 天日期列（換城日標方式符號）、標題下「當天移動＋今晚住哪」、時間軸／卡片／地圖三檢視。
 - `Food` / `Places`：類型＋城市篩選（`CityChips`）；登入後可新增（`Food` 餐廳、`Places` 景點／購物）。`Guides`、`Home` 的待辦也能新增。`Transport`：路段時間軸＋自駕／火車／市內三區。
+  卡片整張可點（`onCardClick` 略過卡片裡的按鈕、連結；標題是給鍵盤用的按鈕），打開 `EntityDetail`：
+  上面 `Gallery`（scroll-snap 左右滑＋箭頭＋張數，從封面滑到第幾張就停在第幾張），下面 vault 內文（`withoutImages` 拿掉照片段落），
+  點照片開 `PhotoViewer` 全螢幕（方向鍵換張）。彈出視窗共用 `Modal`（portal 到 body、Esc 只關最上層、鎖背景捲動、手機是底部單子）。
+  每日行程時段照片（`SlotPhotos`）也是點了開 `PhotoViewer`。
 - `AreaMap`：Leaflet 地圖（郵戳依螢幕距離自動合併、畫路線）＋`AreaRail` 路線區域列＋周邊一日遊。
 共用小元件在 `src/components/`（`Chip`、`Heart`、`MapLink`、`Stamp`、`WishList`、`MarkdownBody`、`EntityPicker` 等）。
 

@@ -5,7 +5,7 @@ import Heart from './Heart';
 import DeleteButton from './DeleteButton';
 
 /** 餐廳／景點／購物卡片右上角：收藏，登入後多一個刪除。 */
-export default function EntityActions({ entity }: { entity: Pick<Entity, 'id' | 'name'> }) {
+export default function EntityActions({ entity, onDeleted }: { entity: Pick<Entity, 'id' | 'name'>; onDeleted?: () => void }) {
   return (
     <div className="card-actions">
       <Heart entityId={entity.id} />
@@ -15,6 +15,7 @@ export default function EntityActions({ entity }: { entity: Pick<Entity, 'id' | 
         onDelete={async () => {
           await deleteItem({ kind: 'entity', id: entity.id });
           markDeleted(deletedKey.entity(entity.id));
+          onDeleted?.();
         }}
       />
     </div>

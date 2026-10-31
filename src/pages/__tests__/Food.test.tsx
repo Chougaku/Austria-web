@@ -148,3 +148,25 @@ describe('Food 刪除餐廳', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('Food 點卡片看詳細', () => {
+  afterEach(() => { cleanup(); RESTAURANTS[0].body = ''; document.body.style.overflow = ''; });
+
+  it('點卡片任何地方打開詳細頁；點收藏、地圖不會開', () => {
+    renderFood();
+    fireEvent.click(screen.getAllByRole('button', { name: '收藏' })[0]);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByText('宮廷甜點'));
+    expect(screen.getByRole('dialog', { name: 'Demel 格拉本' })).toBeTruthy();
+  });
+
+  it('標題是按鈕（鍵盤也能開）；多張照片的封面點了停在那一張', () => {
+    RESTAURANTS[0].body = ['## 照片', '![](vault-img/a.jpg)', '![](vault-img/b.jpg)'].join('\n');
+    renderFood();
+    fireEvent.click(screen.getByRole('button', { name: '看「Figlmüller」的照片（2 張）' }));
+    expect(screen.getByRole('dialog', { name: 'Figlmüller' }).textContent).toContain('1 / 2');
+    fireEvent.click(screen.getByRole('button', { name: '關閉' }));
+    fireEvent.click(screen.getByRole('button', { name: '花くじら' }));
+    expect(screen.getByRole('dialog', { name: '花くじら' })).toBeTruthy();
+  });
+});

@@ -205,7 +205,7 @@ export default function DailyPlan() {
                         ))}
                       </div>
                     )}
-                    {!s.pending && s.images?.length ? <SlotPhotos images={s.images} /> : null}
+                    {!s.pending && s.images?.length ? <SlotPhotos images={s.images} title={s.title} /> : null}
                   </div>
                 );
               })}

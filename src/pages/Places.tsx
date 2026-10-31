@@ -12,6 +12,8 @@ import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
 import Cover from '../components/Cover';
 import EntityActions from '../components/EntityActions';
+import EntityDetail from '../components/EntityDetail';
+import { onCardClick } from '../lib/card-click';
 import { deletedKey, useDeleted } from '../lib/deleted';
 import { imagesIn } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
@@ -26,6 +28,8 @@ export default function Places() {
   const shops = byCategory('購物').filter(alive);
   const [q, setQ] = useState('');
   const [city, setCity] = useState<CityFilter>('all');
+  // 點卡片打開的詳細頁（start＝從封面第幾張點進來）
+  const [detail, setDetail] = useState<{ entity: Entity; start: number } | null>(null);
   const tokens = useMemo(() => tokenize(q), [q]);
 
   const filterList = (all: Entity[]) => {
@@ -64,13 +68,16 @@ export default function Places() {
               {fSpots.map((p, i) => {
                 return (
                   <Reveal key={p.id} index={i}>
-                  <div className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <Cover urls={imagesIn(p.body)} alt={p.name} />
+                  <div className="card card--tap" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}
+                    onClick={onCardClick(() => setDetail({ entity: p, start: 0 }))}>
+                    <Cover urls={imagesIn(p.body)} alt={p.name} onOpen={(i) => setDetail({ entity: p, start: i })} />
                     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', width: '100%' }}>
                       <Stamp rating={p.rating} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div className="serif" style={{ fontSize: 15.5, fontWeight: 700, lineHeight: 1.35 }}>
-                          <HitText segments={makeSegments(p.name, tokens)} />
+                          <button type="button" className="btn-plain card-title-btn" onClick={() => setDetail({ entity: p, start: 0 })}>
+<HitText segments={makeSegments(p.name, tokens)} />
+</button>
                         </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7, alignItems: 'center' }}>
                           {p.fields['類型'] && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--navy)', border: '1px solid rgba(30,53,92,.4)', borderRadius: 4, padding: '1.5px 7px' }}>{p.fields['類型']}</span>}
@@ -101,13 +108,16 @@ export default function Places() {
             <div className="cards-grid">
               {fShops.map((p, i) => (
                 <Reveal key={p.id} index={i}>
-                <div className="card" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <Cover urls={imagesIn(p.body)} alt={p.name} />
+                <div className="card card--tap" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}
+                  onClick={onCardClick(() => setDetail({ entity: p, start: 0 }))}>
+                  <Cover urls={imagesIn(p.body)} alt={p.name} onOpen={(i) => setDetail({ entity: p, start: i })} />
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
                       <span className="serif" style={{ fontSize: 15.5, fontWeight: 700 }}>
-                        <HitText segments={makeSegments(p.name, tokens)} />
+                        <button type="button" className="btn-plain card-title-btn" onClick={() => setDetail({ entity: p, start: 0 })}>
+<HitText segments={makeSegments(p.name, tokens)} />
+</button>
                       </span>
                       {p.rating != null && <span style={{ fontSize: 11.5, color: 'var(--red)', fontWeight: 700 }}>★ {p.rating.toFixed(1)}</span>}
                     </div>
@@ -129,6 +139,7 @@ export default function Places() {
           </section>
         </>
       )}
+      {detail && <EntityDetail entity={detail.entity} start={detail.start} onClose={() => setDetail(null)} />}
     </div>
   );
 }

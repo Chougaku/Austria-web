@@ -304,6 +304,69 @@ a { color: var(--red); }
 .todo-add-err { flex-basis: 100%; margin-top: 0; }
 @media (max-width: 640px) { .todo-add input { font-size: 16px; } }
 
+/* 點卡片打開詳細頁：整張卡片都能點，標題是給鍵盤用的按鈕 */
+.card--tap { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.card--tap:hover { border-color: var(--line-dark); box-shadow: 0 6px 18px rgba(34,32,28,.10); }
+.card-title-btn { font: inherit; line-height: inherit; color: inherit; }
+.card-title-btn:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.cover-wrap[role="button"] { cursor: zoom-in; }
+.cover-wrap[role="button"]:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; border-radius: 8px; }
+
+/* 彈出視窗：桌機置中，手機從下面滑上來的單子 */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 120; display: flex; align-items: center; justify-content: center;
+  padding: 16px; background: rgba(34,32,28,.5);
+}
+.modal {
+  position: relative; width: min(560px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain;
+  background: var(--card); border-radius: 12px; box-shadow: 0 18px 48px rgba(34,32,28,.3); outline: none;
+}
+.modal-close {
+  position: absolute; top: 10px; right: 10px; z-index: 3; width: 34px; height: 34px; padding: 0; border: none; border-radius: 50%;
+  background: rgba(34,32,28,.62); color: #F8F5EE; font-size: 15px; line-height: 34px; cursor: pointer;
+}
+@media (max-width: 640px) {
+  .modal-backdrop { align-items: flex-end; padding: 0; }
+  .modal { width: 100%; max-height: 92dvh; border-radius: 14px 14px 0 0; }
+}
+.detail-body { padding: 16px 20px 22px; }
+.detail-head { display: flex; align-items: flex-start; gap: 10px; }
+.detail-title { flex: 1; min-width: 0; margin: 0; font-size: 20px; font-weight: 800; line-height: 1.35; }
+.modal--detail > .detail-body:first-of-type .detail-head { padding-right: 40px; } /* 沒照片時讓出關閉鈕 */
+.detail-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 8px 0 14px; padding-bottom: 12px; border-bottom: 1px dashed rgba(34,32,28,.18); }
+.detail-badge { font-size: 11px; font-weight: 600; color: var(--navy); border: 1px solid rgba(30,53,92,.4); border-radius: 4px; padding: 1.5px 7px; }
+.detail-badge--soft { color: var(--brown-dk); border-color: var(--line-dark); }
+.detail-rating { font-size: 12px; font-weight: 700; color: var(--red); }
+.detail-area { font-size: 12px; color: var(--brown); }
+.detail-empty { margin: 0; font-size: 13px; color: var(--brown); }
+
+/* 照片列：一次一張，左右滑或按箭頭 */
+.gallery { position: relative; background: #1d1b18; }
+.gallery-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.gallery-track::-webkit-scrollbar { display: none; }
+.gallery-slide {
+  flex: 0 0 100%; aspect-ratio: 4 / 3; scroll-snap-align: start; display: flex; align-items: center; justify-content: center;
+  cursor: zoom-in;
+}
+.gallery-slide img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.gallery-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 38px; height: 38px; padding: 0;
+  border: none; border-radius: 50%; background: rgba(248,245,238,.88); color: var(--ink); font-size: 24px; line-height: 36px; cursor: pointer;
+}
+.gallery-nav:disabled { opacity: 0; pointer-events: none; }
+.gallery-nav--prev { left: 10px; }
+.gallery-nav--next { right: 10px; }
+.gallery-count {
+  position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); padding: 2px 10px; border-radius: 10px;
+  background: rgba(34,32,28,.65); color: #F8F5EE; font-size: 12px; font-weight: 700; pointer-events: none;
+}
+/* 全螢幕看照片 */
+.modal-backdrop--photos { padding: 0; background: rgba(12,11,10,.94); align-items: stretch; }
+.modal--photos { width: 100%; height: 100dvh; max-height: none; border-radius: 0; background: transparent; box-shadow: none; overflow: hidden; }
+.gallery--full, .gallery--full .gallery-track { height: 100%; background: transparent; }
+.gallery--full .gallery-slide { aspect-ratio: auto; height: 100%; padding: 48px 8px; cursor: default; }
+@media (max-width: 640px) { .gallery-nav { width: 34px; height: 34px; font-size: 22px; line-height: 32px; } }
+
 /* 刪除（登入後才出現）：卡片右上角收藏底下、攻略標題列、待辦每一行的右邊 */
 .card-actions { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .del-btn {
@@ -344,6 +407,7 @@ a { color: var(--red); }
 .img-add:disabled { opacity: .55; cursor: default; }
 .img-picker-err { flex-basis: 100%; font-size: 12px; font-weight: 600; color: var(--red); letter-spacing: 0; }
 .plan-imgs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
+.plan-imgs button { cursor: zoom-in; }
 .plan-imgs img { width: 92px; height: 68px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; }
 .cover-wrap { position: relative; }
 .cover {
