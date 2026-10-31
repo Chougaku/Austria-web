@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 export const CATEGORIES = ['餐廳', '景點', '購物', '交通', '住宿', '區域'] as const;
 
+/** 圖片。file 是 vault 裡的寫法（`![[file]]` 的檔名，或外部圖片的網址），存回 vault 用；
+    url 是網站上顯示用的網址（建置時換成 vault-img/…；編輯中剛上傳的是本機縮圖）。 */
+export const ImageRefSchema = z.object({ file: z.string().min(1), url: z.string().min(1) });
+export type ImageRef = z.infer<typeof ImageRefSchema>;
+
 export const EntitySchema = z.object({
   id: z.string().min(1),
   category: z.enum(CATEGORIES),
@@ -14,13 +19,14 @@ export const EntitySchema = z.object({
   body: z.string(),
   area: z.string(),
   rating: z.number().min(0).max(5).nullable(),
+  /** 內文裡網站顯示得出來的圖（建置時算），依出現順序；第一張是卡片封面。 */
+  images: z.array(ImageRefSchema).optional(),
 });
 export type Entity = z.infer<typeof EntitySchema>;
 
-/** 時段附的圖片。file 是 vault 裡的寫法（`![[file]]` 的檔名，或外部圖片的網址），存回 vault 用；
-    url 是網站上顯示用的網址（建置時換成 vault-img/…；編輯中剛上傳的是本機縮圖）。 */
-export const SlotImageSchema = z.object({ file: z.string().min(1), url: z.string().min(1) });
-export type SlotImage = z.infer<typeof SlotImageSchema>;
+/** 時段附的圖片（同 ImageRef）。 */
+export const SlotImageSchema = ImageRefSchema;
+export type SlotImage = ImageRef;
 
 export const DaySlotSchema = z.object({
   time: z.string().min(1),
