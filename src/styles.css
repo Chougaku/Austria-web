@@ -304,6 +304,16 @@ a { color: var(--red); }
 .todo-add-err { flex-basis: 100%; margin-top: 0; }
 @media (max-width: 640px) { .todo-add input { font-size: 16px; } }
 
+/* 刪除（登入後才出現）：卡片右上角收藏底下、攻略標題列、待辦每一行的右邊 */
+.card-actions { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.del-btn {
+  flex: none; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--brown-lt); cursor: pointer;
+}
+.del-btn:hover { color: var(--red); border-color: rgba(200,16,46,.35); }
+.del-btn:disabled { opacity: .5; cursor: default; }
+.todo-row { display: flex; align-items: center; gap: 6px; }
+
 /* 照片：新增表單的選圖、行程時段的照片、卡片封面 */
 .visually-hidden {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;

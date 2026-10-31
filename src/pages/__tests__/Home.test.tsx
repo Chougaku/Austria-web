@@ -3,7 +3,8 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/react';
 import { TripStateProvider } from '../../state/store';
 import Home from '../Home';
-const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn() }));
+import { resetDeletedCache } from '../../lib/deleted';
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn(), deleteItem: vi.fn() }));
 vi.mock('../../api/add', () => api);
 
 vi.mock('../../state/auth', () => ({
@@ -14,7 +15,10 @@ vi.mock('../../data', () => ({
   byCategory: () => [],
   entities: [],
   guides: [],
-  todos: [],
+  todos: [
+    { key: 'todo:1', text: '訂機票', checkedInVault: false },
+    { key: 'todo:2', text: '換歐元', checkedInVault: false },
+  ],
   meta: { builtAt: '2026-10-02T00:00:00Z', tripStart: '2027-06-14', tripEnd: '2027-06-30' },
   overview: {
     fields: {
@@ -109,5 +113,20 @@ describe('Home 新增出發前待辦', () => {
     fireEvent.submit(screen.getByRole('form', { name: '新增待辦' }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('已經有同名的待辦'));
     expect(screen.getByRole('form', { name: '新增待辦' })).toBeTruthy();
+  });
+});
+
+describe('Home 刪除待辦', () => {
+  afterEach(() => { cleanup(); api.deleteItem.mockReset(); localStorage.clear(); resetDeletedCache(); vi.restoreAllMocks(); });
+
+  it('每一行右邊有刪除，確認後那一行消失、完成數跟著變', async () => {
+    api.deleteItem.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderHome();
+    expect(screen.getByText('0 / 2 完成')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '刪除「換歐元」' }));
+    await waitFor(() => expect(screen.queryByText('換歐元')).toBeNull());
+    expect(api.deleteItem).toHaveBeenCalledWith({ kind: 'todo', text: '換歐元' });
+    expect(screen.getByText('0 / 1 完成')).toBeTruthy();
   });
 });

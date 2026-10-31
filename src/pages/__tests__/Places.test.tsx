@@ -3,12 +3,14 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { TripStateProvider } from '../../state/store';
 import Places from '../Places';
+import { resetDeletedCache } from '../../lib/deleted';
 
 const auth = vi.hoisted(() => ({ canEdit: true, openLogin: vi.fn() }));
 vi.mock('../../state/auth', () => ({ useAuth: () => auth }));
 const addEntity = vi.hoisted(() => vi.fn());
 const uploadImage = vi.hoisted(() => vi.fn());
-vi.mock('../../api/add', () => ({ addEntity, uploadImage }));
+const deleteItem = vi.hoisted(() => vi.fn());
+vi.mock('../../api/add', () => ({ addEntity, uploadImage, deleteItem }));
 
 vi.mock('../../data', () => ({
   byCategory: (cat: string) => {
@@ -119,5 +121,25 @@ describe('Places 新增景點／購物', () => {
     fireEvent.click(screen.getByRole('button', { name: '＋ 新增景點' }));
     expect(auth.openLogin).toHaveBeenCalled();
     expect(screen.queryByRole('form')).toBeNull();
+  });
+});
+
+describe('Places 刪除景點／購物', () => {
+  afterEach(() => { cleanup(); auth.canEdit = true; deleteItem.mockReset(); localStorage.clear(); resetDeletedCache(); vi.restoreAllMocks(); });
+
+  it('登入後刪除購物點，區塊計數跟著變', async () => {
+    deleteItem.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<TripStateProvider><Places /></TripStateProvider>);
+    fireEvent.click(screen.getByRole('button', { name: '刪除「格拉本大街」' }));
+    await waitFor(() => expect(screen.queryByText('格拉本大街')).toBeNull());
+    expect(deleteItem).toHaveBeenCalledWith({ kind: 'entity', id: 's1' });
+    expect(screen.getByText('0 處')).toBeTruthy();
+  });
+
+  it('沒登入看不到刪除鈕', () => {
+    auth.canEdit = false;
+    render(<TripStateProvider><Places /></TripStateProvider>);
+    expect(screen.queryByRole('button', { name: /^刪除「/ })).toBeNull();
   });
 });

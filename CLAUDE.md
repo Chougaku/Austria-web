@@ -110,6 +110,14 @@ Cloudflare 與 R2 設定。
   - 每日行程編輯（`SlotImages`）：選了就上傳，時段先用本機縮圖（data URL）預覽，按「儲存並提交」才寫進行程檔。
     取消編輯或刪掉照片，已上傳的檔還留在 vault 的 `assets/`（沒有被引用就不會出現在網站上）。
 
+從儀表板刪除（登入後才出現的垃圾桶 `DeleteButton`，先 `window.confirm`）：
+- 餐廳／景點／購物卡片（`EntityActions`：收藏＋刪除）、攻略標題列、首頁待辦每一行。
+- `POST /api/delete`（`worker/src/remove.ts` 驗證）：實體、攻略連同它嵌入的、從儀表板上傳的照片（`assets/<日期-亂數>.jpg`）
+  用 Git Data API 一筆 commit 刪掉；待辦是從 `## ✅ 待辦` 拿掉那一行（帶 sha）。找不到回 404（前端當成功），
+  分支剛被推新東西回 409。只能刪 `wiki/entities/{餐廳,景點,購物}/` 與 `原始資料/別人行程/` 底下的檔，總覽頁不行。
+- 資料是建置時打包的，刪掉後先記在 localStorage `austria-deleted`（`src/lib/deleted.ts`，跟著 `meta.builtAt`，
+  網站重建後作廢）把項目藏起來，各頁的列表、計數都會先扣掉。vault 是 git，刪錯可以從歷史救回。
+
 ### 狀態同步（收藏/待辦）
 
 `src/state/store.tsx` 的 `TripStateProvider`（`useTripState`）是收藏/待辦唯一狀態來源（localStorage key `austria-trip-state`）。
@@ -127,7 +135,7 @@ Cloudflare 與 R2 設定。
 ### Worker（`worker/src/index.ts`，Hono + D1）
 
 - 單一資料表 `state(key, value, updated_at)`（`worker/schema.sql`）。
-- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`、`POST /api/image`。
+- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`、`POST /api/image`、`POST /api/delete`。
 - `GET /api/state` 與 `POST /api/login` 免驗證，其餘要 `Authorization: Bearer <DASH_TOKEN>`。
 - CORS 白名單來自 `wrangler.toml` 的 `ALLOWED_ORIGINS`（逗號分隔，預設 `austria.pages.dev` 與 `chougaku.github.io`），
   本機任意 port 放行。綁自訂網域時改這裡。

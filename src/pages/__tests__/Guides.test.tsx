@@ -2,7 +2,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react';
 import Guides from '../Guides';
-const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn() }));
+import { resetDeletedCache } from '../../lib/deleted';
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn(), deleteItem: vi.fn() }));
 vi.mock('../../api/add', () => api);
 import { TripStateProvider } from '../../state/store';
 
@@ -152,5 +153,20 @@ describe('Guides 新增攻略', () => {
     fireEvent.submit(form);
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已新增「咖啡館清單」'));
     expect(api.addGuide).toHaveBeenCalledWith({ title: '咖啡館清單', author: '小明', url: 'https://example.com/a', body: BODY, images: [] });
+  });
+});
+
+describe('Guides 刪除攻略', () => {
+  afterEach(() => { cleanup(); api.deleteItem.mockReset(); localStorage.clear(); resetDeletedCache(); vi.restoreAllMocks(); });
+
+  it('確認後刪掉；按刪除不會順便展開卡片', async () => {
+    api.deleteItem.mockResolvedValue(undefined);
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderGuides();
+    fireEvent.click(screen.getByRole('button', { name: '刪除「交通懶人包」' }));
+    await waitFor(() => expect(screen.queryByText('交通懶人包')).toBeNull());
+    expect(api.deleteItem).toHaveBeenCalledWith({ kind: 'guide', id: 'g2' });
+    expect(screen.getByText('維也納美食攻略')).toBeTruthy();
+    expect(screen.queryByText('收合 ▲')).toBeNull();
   });
 });

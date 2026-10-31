@@ -3,7 +3,8 @@ import { describe, it, expect, afterEach, vi } from 'vitest';
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { TripStateProvider } from '../../state/store';
 import Food from '../Food';
-const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn() }));
+import { resetDeletedCache } from '../../lib/deleted';
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn(), deleteItem: vi.fn() }));
 vi.mock('../../api/add', () => api);
 
 vi.mock('../../state/auth', () => ({ useAuth: () => ({ canEdit: true, openLogin: vi.fn() }) }));
@@ -116,5 +117,34 @@ describe('Food 新增餐廳', () => {
     expect(api.addEntity).toHaveBeenCalledWith(expect.objectContaining({
       category: '餐廳', name: 'Figlmüller', price: '€20–30', ticket: '', city: '維也納', location: '維也納',
     }));
+  });
+});
+
+describe('Food 刪除餐廳', () => {
+  afterEach(() => { cleanup(); api.deleteItem.mockReset(); localStorage.clear(); resetDeletedCache(); });
+
+  it('按取消不刪；確認後刪掉，卡片和計數馬上更新', async () => {
+    api.deleteItem.mockResolvedValue(undefined);
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
+    renderFood();
+    const btn = screen.getByRole('button', { name: '刪除「Figlmüller」' });
+    fireEvent.click(btn);
+    expect(api.deleteItem).not.toHaveBeenCalled();
+    fireEvent.click(btn);
+    await waitFor(() => expect(screen.queryByText('Figlmüller')).toBeNull());
+    expect(api.deleteItem).toHaveBeenCalledWith({ kind: 'entity', id: 'r1' });
+    expect(screen.getByText('共 2 間')).toBeTruthy();
+    confirm.mockRestore();
+  });
+
+  it('刪除失敗跳出原因，卡片留著', async () => {
+    api.deleteItem.mockRejectedValue(new Error('登入已失效，請重新登入後再刪除'));
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    renderFood();
+    fireEvent.click(screen.getByRole('button', { name: '刪除「Figlmüller」' }));
+    await waitFor(() => expect(alert).toHaveBeenCalledWith('登入已失效，請重新登入後再刪除'));
+    expect(screen.getByText('Figlmüller')).toBeTruthy();
+    vi.restoreAllMocks();
   });
 });

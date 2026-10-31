@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { guides } from '../data';
+import { guides as builtGuides } from '../data';
 import type { Guide } from '../data/schema';
 import MarkdownBody from '../components/MarkdownBody';
 import SearchField from '../components/SearchField';
@@ -12,6 +12,11 @@ import { useMarkText } from '../lib/useMarkText';
 import AddGuide from '../components/AddGuide';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import { useAddFlow } from '../lib/useAddFlow';
+import DeleteButton from '../components/DeleteButton';
+import { deleteItem } from '../api/add';
+import { deletedKey, markDeleted, useDeleted } from '../lib/deleted';
+
+const NL = String.fromCharCode(10);
 
 function GuideCard({ g, tokens, isOpen, onToggle }: {
   g: Guide; tokens: string[]; isOpen: boolean; onToggle: () => void;
@@ -45,6 +50,8 @@ function GuideCard({ g, tokens, isOpen, onToggle }: {
           )}
         </div>
         <GuideStar guideId={g.id} />
+        <DeleteButton name={g.title} confirmText={`確定刪除攻略「${g.title}」？${NL}會連同它的圖片從 vault 刪掉，網站重建後就不見了。`}
+          onDelete={async () => { await deleteItem({ kind: 'guide', id: g.id }); markDeleted(deletedKey.guide(g.id)); }} />
         <span className="serif" style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, flex: 'none' }}>
           {isOpen ? '收合 ▲' : '展開 ▼'}
         </span>
@@ -69,6 +76,9 @@ export default function Guides() {
   const toggle = (id: string) => setOpen((s) => ({ ...s, [id]: !s[id] }));
   const add = useAddFlow();
 
+  const deleted = useDeleted();
+  // 剛從網站刪掉的先藏起來（網站重建後 vault 裡就沒有了）
+  const guides = builtGuides.filter((g) => !deleted.has(deletedKey.guide(g.id)));
   const hasFav = guides.some((g) => isGuideFav(g.id));
   const searched = tokens.length === 0
     ? guides

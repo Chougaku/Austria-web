@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { byCategory } from '../data';
 import type { Entity } from '../data/schema';
-import Heart from '../components/Heart';
 import Reveal from '../components/Reveal';
 import Stamp from '../components/Stamp';
 import MapLink from '../components/MapLink';
@@ -12,14 +11,19 @@ import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
 import Cover from '../components/Cover';
+import EntityActions from '../components/EntityActions';
+import { deletedKey, useDeleted } from '../lib/deleted';
 import { imagesIn } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import type { AddableCategory } from '../api/add';
 import { useAddFlow } from '../lib/useAddFlow';
 
 export default function Places() {
-  const spots = byCategory('景點');
-  const shops = byCategory('購物');
+  const deleted = useDeleted();
+  // 剛從網站刪掉的先藏起來（網站重建後 vault 裡就沒有了）
+  const alive = (e: Entity) => !deleted.has(deletedKey.entity(e.id));
+  const spots = byCategory('景點').filter(alive);
+  const shops = byCategory('購物').filter(alive);
   const [q, setQ] = useState('');
   const [city, setCity] = useState<CityFilter>('all');
   const tokens = useMemo(() => tokenize(q), [q]);
@@ -81,7 +85,7 @@ export default function Places() {
                           </div>
                         )}
                       </div>
-                      <Heart entityId={p.id} />
+                      <EntityActions entity={p} />
                     </div>
                   </div>
                   </Reveal>
@@ -116,7 +120,7 @@ export default function Places() {
                       <HitText segments={makeSegments(p.summary, tokens)} />
                     </div>
                   </div>
-                  <Heart entityId={p.id} />
+                  <EntityActions entity={p} />
                   </div>
                 </div>
                 </Reveal>

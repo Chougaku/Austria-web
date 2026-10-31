@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { countdownDays } from '../lib/countdown';
-import { byCategory, entities, meta, overview, todos } from '../data';
+import { byCategory, entities, meta, overview, todos as builtTodos } from '../data';
 import { CITIES, matchCity } from '../data/areas';
 import { useTripState } from '../state/store';
 import { useAuth } from '../state/auth';
@@ -8,6 +8,9 @@ import WishList from '../components/WishList';
 import AddTodo from '../components/AddTodo';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import { useAddFlow } from '../lib/useAddFlow';
+import DeleteButton from '../components/DeleteButton';
+import { deleteItem } from '../api/add';
+import { deletedKey, markDeleted, useDeleted } from '../lib/deleted';
 import GuideFavCard from '../components/GuideFavCard';
 import RouteHero from '../components/RouteHero';
 import DioramaScene from '../components/DioramaScene';
@@ -19,7 +22,10 @@ export default function Home() {
   const { canEdit, openLogin } = useAuth();
   const addTodo = useAddFlow();
   const [wishOpen, setWishOpen] = useState(false);
-  const favEntities = entities.filter((e) => favs[`fav:${e.id}`]);
+  const deleted = useDeleted();
+  // 剛從網站刪掉的先藏起來（網站重建後 vault 裡就沒有了）
+  const favEntities = entities.filter((e) => favs[`fav:${e.id}`] && !deleted.has(deletedKey.entity(e.id)));
+  const todos = builtTodos.filter((t) => !deleted.has(deletedKey.todo(t.text)));
   const f = overview.fields;
   const cd = countdownDays(meta.tripStart);
   const done = todos.filter((t) => todosState[t.key]).length;
@@ -188,8 +194,9 @@ export default function Home() {
             {todos.map((t) => {
               const on = !!todosState[t.key];
               return (
-                <button key={t.key} className="btn-plain dash-bottom"
-                  style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', opacity: canEdit ? 1 : 0.6 }}
+                <div key={t.key} className="dash-bottom todo-row">
+                <button className="btn-plain"
+                  style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', textAlign: 'left', opacity: canEdit ? 1 : 0.6 }}
                   onClick={() => (canEdit ? toggleTodo(t.key) : openLogin())}>
                   <span style={{
                     flex: 'none', width: 20, height: 20, borderRadius: 4,
@@ -199,6 +206,9 @@ export default function Home() {
                   }}>{on ? '✓' : ''}</span>
                   <span style={{ fontSize: 13.5, color: on ? 'var(--brown)' : 'var(--ink)', textDecoration: on ? 'line-through' : 'none' }}>{t.text}</span>
                 </button>
+                <DeleteButton name={t.text} confirmText={`確定刪除待辦「${t.text}」？`}
+                  onDelete={async () => { await deleteItem({ kind: 'todo', text: t.text }); markDeleted(deletedKey.todo(t.text)); }} />
+                </div>
               );
             })}
           </div>

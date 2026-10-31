@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { byCategory } from '../data';
 import Chip from '../components/Chip';
-import Heart from '../components/Heart';
 import Reveal from '../components/Reveal';
 import Stamp from '../components/Stamp';
 import MapLink from '../components/MapLink';
@@ -13,13 +12,17 @@ import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
 import Cover from '../components/Cover';
+import EntityActions from '../components/EntityActions';
+import { deletedKey, useDeleted } from '../lib/deleted';
 import { imagesIn } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import { useAddFlow } from '../lib/useAddFlow';
 
 export default function Food() {
   const { favs } = useTripState();
-  const all = useMemo(() => byCategory('餐廳'), []);
+  const deleted = useDeleted();
+  // 剛從網站刪掉的先藏起來（網站重建後 vault 裡就沒有了）
+  const all = useMemo(() => byCategory('餐廳').filter((r) => !deleted.has(deletedKey.entity(r.id))), [deleted]);
   const [cat, setCat] = useState('全部');
   const [city, setCity] = useState<CityFilter>('all');
   const [q, setQ] = useState('');
@@ -135,7 +138,7 @@ export default function Food() {
                   </div>
                 )}
               </div>
-              <Heart entityId={r.id} />
+              <EntityActions entity={r} />
               </div>
             </div>
             </Reveal>

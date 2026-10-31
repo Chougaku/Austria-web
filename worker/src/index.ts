@@ -5,6 +5,7 @@ import { GUIDE_DIR, guideMarkdown, parseNewGuide } from './guide';
 import { IMAGE_DIR, MAX_IMAGE_BYTES, imageFileName, sniffImage } from './image';
 import { bytesToBase64, fileName, taipeiDate } from './text';
 import { TODO_PATH, insertTodo, parseTodoText } from './todo';
+import { parseDelete, removeTodo, uploadedImages } from './remove';
 
 type Bindings = {
   DB: D1Database; DASH_TOKEN: string; DASH_PASSWORD: string;
@@ -221,6 +222,84 @@ app.post('/api/todo', async (c) => {
     return c.json(ghError('github put failed', putRes.status, detail), 502);
   }
   return c.json({ ok: true }, 201);
+});
+
+/** 一筆 commit 刪掉好幾個檔（Git Data API）：刪地點連同照片，網站只重建一次、歷史也只有一筆。
+    這期間分支被推了新東西（ref 更新不是 fast-forward，GitHub 回 422）回 'conflict'，前端請使用者再按一次。 */
+async function deleteFiles(env: Bindings, paths: string[], message: string): Promise<true | 'conflict' | Response> {
+  const git = `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/git`;
+  const headers = { ...ghContents(env, '').ghHeaders, 'Content-Type': 'application/json' };
+  const ref = await fetch(`${git}/ref/heads/${env.GH_BRANCH}`, { headers });
+  if (!ref.ok) return ref;
+  const head = (await ref.json<{ object: { sha: string } }>()).object.sha;
+  const commit = await fetch(`${git}/commits/${head}`, { headers });
+  if (!commit.ok) return commit;
+  const baseTree = (await commit.json<{ tree: { sha: string } }>()).tree.sha;
+  const tree = await fetch(`${git}/trees`, {
+    method: 'POST', headers,
+    // sha: null＝把這個路徑從樹上拿掉
+    body: JSON.stringify({ base_tree: baseTree, tree: paths.map((path) => ({ path, mode: '100644', type: 'blob', sha: null })) }),
+  });
+  if (!tree.ok) return tree;
+  const created = await fetch(`${git}/commits`, {
+    method: 'POST', headers,
+    body: JSON.stringify({ message, tree: (await tree.json<{ sha: string }>()).sha, parents: [head] }),
+  });
+  if (!created.ok) return created;
+  const update = await fetch(`${git}/refs/heads/${env.GH_BRANCH}`, {
+    method: 'PATCH', headers, body: JSON.stringify({ sha: (await created.json<{ sha: string }>()).sha }),
+  });
+  if (update.status === 422) return 'conflict';
+  return update.ok ? true : update;
+}
+
+// 刪除：餐廳／景點／購物、攻略連同它從儀表板上傳的照片一起刪（一筆 commit，觸發網站重建），或拿掉一句待辦。
+// 找不到要刪的東西回 404（可能別台裝置已經刪了）。vault 是 git，刪錯可以從歷史救回。
+app.post('/api/delete', async (c) => {
+  const req = parseDelete(await c.req.json().catch(() => null));
+  if (typeof req === 'string') return c.json({ error: 'invalid delete', detail: req }, 400);
+  const fail = async (tag: string, res: Response) => {
+    const detail = await res.text();
+    console.log(`[delete] ${tag}`, res.status, detail);
+    return c.json(ghError(`github ${tag} failed`, res.status, detail), 502);
+  };
+  const branch = c.env.GH_BRANCH;
+
+  if (req.kind === 'todo') {
+    const { api, ghHeaders } = ghContents(c.env, TODO_PATH);
+    const getRes = await fetch(`${api}?ref=${branch}`, { headers: ghHeaders });
+    if (!getRes.ok) return fail('get', getRes);
+    const file = await getRes.json<{ content: string; sha: string }>();
+    const next = removeTodo(fromBase64(file.content), req.text);
+    if (next === null) return c.json({ error: 'missing' }, 404);
+    const putRes = await fetch(api, {
+      method: 'PUT',
+      headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: `chore(todo): 從儀表板刪除待辦「${req.text}」`, content: toBase64(next), sha: file.sha, branch }),
+    });
+    if (putRes.status === 409) return c.json({ error: 'sha conflict' }, 409);
+    if (!putRes.ok) return fail('put', putRes);
+    return c.json({ ok: true });
+  }
+
+  const { api, ghHeaders } = ghContents(c.env, req.path);
+  const getRes = await fetch(`${api}?ref=${branch}`, { headers: ghHeaders });
+  if (getRes.status === 404) return c.json({ error: 'missing' }, 404);
+  if (!getRes.ok) return fail('get', getRes);
+  let images = uploadedImages(fromBase64((await getRes.json<{ content: string }>()).content));
+  if (images.length) {
+    // 只刪 assets/ 裡真的還在的（樹上不存在的路徑 GitHub 會拒絕整筆）
+    const dir = ghContents(c.env, IMAGE_DIR);
+    const list = await fetch(`${dir.api}?ref=${branch}`, { headers: ghHeaders });
+    const have = new Set(list.ok ? (await list.json<{ path: string }[]>()).map((f) => f.path) : []);
+    images = images.filter((p) => have.has(p));
+  }
+  const what = req.kind === 'entity' ? `${req.category}「${req.id.slice(req.category.length + 1)}」` : `攻略「${req.id}」`;
+  const removed = [req.path, ...images];
+  const r = await deleteFiles(c.env, removed, `chore(${req.kind}): 從儀表板刪除${what}`);
+  if (r === 'conflict') return c.json({ error: 'sha conflict' }, 409);
+  if (r !== true) return fail('git', r);
+  return c.json({ ok: true, removed });
 });
 
 export default app;

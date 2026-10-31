@@ -67,3 +67,34 @@ export const addTodo = (text: string) => postJson('/api/todo', { text }, '待辦
 /** 上傳一張（已縮好的）圖片到 vault 的 assets/，回傳檔名（id）給新增或行程用 `![[檔名]]` 嵌入。
     這一步不會觸發網站重建，要等後面的新增／存檔送出才一起重建。 */
 export const uploadImage = (blob: Blob) => post('/api/image', blob, blob.type || 'image/jpeg', '圖片');
+
+/** 刪除：餐廳／景點／購物、攻略（連同它從儀表板上傳的照片），或一句待辦。 */
+export type DeleteInput = { kind: 'entity' | 'guide'; id: string } | { kind: 'todo'; text: string };
+
+export function deleteErrorMessage(status: number, body: ErrorBody | null): string {
+  if (status === 401) return '登入已失效，請重新登入後再刪除';
+  if (status === 409) return '檔案剛被改過，請再按一次刪除';
+  if (status === 400) return body?.detail ?? '這個項目不能從網站上刪除';
+  if (body?.reason === 'github-auth') return 'Worker 的 GitHub token 已失效或權限不足，需重新設定 GITHUB_TOKEN';
+  if (status === 502) return `從 vault 刪除失敗（${body?.status ?? '未知狀態'}），請稍後再試`;
+  return `刪除失敗（HTTP ${status}）`;
+}
+
+/** vault 裡已經沒有它（404，可能別台裝置剛刪掉）也算刪除成功。網站要等重建才真的看不到。 */
+export async function deleteItem(input: DeleteInput): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase()}/api/delete`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${getToken() ?? ''}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'TimeoutError') throw new Error('刪除逾時，請確認網路後再試');
+    throw new Error('連不上伺服器，請確認網路後再試');
+  }
+  if (res.ok || res.status === 404) return;
+  const body = await res.json().catch(() => null) as ErrorBody | null;
+  throw new Error(deleteErrorMessage(res.status, body));
+}

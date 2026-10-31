@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { addEntity, addGuide, addTodo, type NewEntityInput } from '../add';
+import { addEntity, addGuide, addTodo, deleteItem, type NewEntityInput } from '../add';
 
 const input: NewEntityInput = {
   category: '景點', name: '霍夫堡', type: '宮殿', city: '維也納', location: '維也納', address: '', ticket: '', price: '', summary: '', images: [],
@@ -50,5 +50,25 @@ describe('從儀表板新增', () => {
   it('連不上伺服器', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
     await expect(addEntity(input)).rejects.toThrow('連不上伺服器');
+  });
+});
+
+describe('deleteItem', () => {
+  it('POST /api/delete；vault 裡已經沒有（404）也算成功', async () => {
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response('{}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await deleteItem({ kind: 'entity', id: '餐廳/Öfferl' });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('https://api.test/api/delete');
+    expect(JSON.parse(init!.body as string)).toEqual({ kind: 'entity', id: '餐廳/Öfferl' });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":"missing"}', { status: 404 })));
+    await expect(deleteItem({ kind: 'todo', text: 'x' })).resolves.toBeUndefined();
+  });
+
+  it('檔案剛被改過、登入失效各有訊息', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{"error":"sha conflict"}', { status: 409 })));
+    await expect(deleteItem({ kind: 'guide', id: 'x' })).rejects.toThrow('再按一次刪除');
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 401 })));
+    await expect(deleteItem({ kind: 'guide', id: 'x' })).rejects.toThrow('重新登入');
   });
 });
