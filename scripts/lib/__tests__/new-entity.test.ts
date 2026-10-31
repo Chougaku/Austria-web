@@ -59,3 +59,22 @@ describe('從儀表板新增的檔案讀得回來', () => {
     expect(parseTodos(insertTodo('# 行程筆記\n', '訂機票')!).map((t) => t.text)).toEqual(['訂機票']);
   });
 });
+
+describe('從儀表板編輯過的檔案讀得回來', () => {
+  it('改簡介、類型、拿掉照片後，解析結果跟著變、其他欄位不動', async () => {
+    const { applyEntityEdit } = await import('../../../worker/src/entity-edit');
+    const md = entityMarkdown({
+      ...blank, category: '餐廳', name: 'Öfferl', type: '咖啡廳', price: '10-20歐', location: '維也納 / 普拉特', city: '維也納',
+      summary: '舊簡介', images: ['20261029-aaaaaaaa.jpg', '20261029-bbbbbbbb.jpg'],
+    }, '2026-10-29');
+    const edited = applyEntityEdit(md, {
+      changes: { summary: '新簡介', type: '咖啡館' }, removeImages: ['20261029-aaaaaaaa.jpg'], addImages: [],
+    }, '2026-10-31');
+    const e = parseEntity('餐廳', 'Öfferl.md', edited);
+    expect(e.summary).toBe('新簡介');
+    expect(e.fields).toMatchObject({ 類型: '咖啡館', 價位: '10-20歐', 位置: '維也納 / 普拉特' });
+    expect(e.area).toBe('普拉特');
+    expect(e.body).toContain('![](20261029-bbbbbbbb.jpg)');
+    expect(e.body).not.toContain('aaaaaaaa');
+  });
+});

@@ -3,9 +3,10 @@ import { cors } from 'hono/cors';
 import { entityMarkdown, parseNewEntity } from './entity';
 import { GUIDE_DIR, guideMarkdown, parseNewGuide } from './guide';
 import { IMAGE_DIR, MAX_IMAGE_BYTES, imageFileName, sniffImage } from './image';
-import { bytesToBase64, fileName, taipeiDate } from './text';
+import { IMAGE_FILE, bytesToBase64, fileName, taipeiDate } from './text';
 import { TODO_PATH, insertTodo, parseTodoText } from './todo';
 import { parseDelete, removeTodo, uploadedImages } from './remove';
+import { applyEntityEdit, editedId, parseEntityEdit } from './entity-edit';
 
 type Bindings = {
   DB: D1Database; DASH_TOKEN: string; DASH_PASSWORD: string;
@@ -224,9 +225,13 @@ app.post('/api/todo', async (c) => {
   return c.json({ ok: true }, 201);
 });
 
-/** 一筆 commit 刪掉好幾個檔（Git Data API）：刪地點連同照片，網站只重建一次、歷史也只有一筆。
-    這期間分支被推了新東西（ref 更新不是 fast-forward，GitHub 回 422）回 'conflict'，前端請使用者再按一次。 */
-async function deleteFiles(env: Bindings, paths: string[], message: string): Promise<true | 'conflict' | Response> {
+/** Git Data API：一筆 commit 改好幾個檔（新增／改內容／刪掉），網站只重建一次、歷史也只有一筆。
+    先拿到分支目前的 head，讀檔也讀這個版本；最後更新分支只接受 fast-forward，
+    中間有人推了新東西（GitHub 回 422）就回 'conflict'，前端請使用者再按一次。 */
+type GitBase = { git: string; headers: Record<string, string>; head: string; baseTree: string };
+type TreeEntry = { path: string; content: string } | { path: string; remove: true };
+
+async function gitHead(env: Bindings): Promise<GitBase | Response> {
   const git = `https://api.github.com/repos/${env.GH_OWNER}/${env.GH_REPO}/git`;
   const headers = { ...ghContents(env, '').ghHeaders, 'Content-Type': 'application/json' };
   const ref = await fetch(`${git}/ref/heads/${env.GH_BRANCH}`, { headers });
@@ -234,11 +239,20 @@ async function deleteFiles(env: Bindings, paths: string[], message: string): Pro
   const head = (await ref.json<{ object: { sha: string } }>()).object.sha;
   const commit = await fetch(`${git}/commits/${head}`, { headers });
   if (!commit.ok) return commit;
-  const baseTree = (await commit.json<{ tree: { sha: string } }>()).tree.sha;
+  return { git, headers, head, baseTree: (await commit.json<{ tree: { sha: string } }>()).tree.sha };
+}
+
+async function commitTree(env: Bindings, base: GitBase, entries: TreeEntry[], message: string): Promise<true | 'conflict' | Response> {
+  const { git, headers, head, baseTree } = base;
   const tree = await fetch(`${git}/trees`, {
     method: 'POST', headers,
-    // sha: null＝把這個路徑從樹上拿掉
-    body: JSON.stringify({ base_tree: baseTree, tree: paths.map((path) => ({ path, mode: '100644', type: 'blob', sha: null })) }),
+    // content＝新內容；sha: null＝把這個路徑從樹上拿掉
+    body: JSON.stringify({
+      base_tree: baseTree,
+      tree: entries.map((e) => ('remove' in e
+        ? { path: e.path, mode: '100644', type: 'blob', sha: null }
+        : { path: e.path, mode: '100644', type: 'blob', content: e.content })),
+    }),
   });
   if (!tree.ok) return tree;
   const created = await fetch(`${git}/commits`, {
@@ -251,6 +265,15 @@ async function deleteFiles(env: Bindings, paths: string[], message: string): Pro
   });
   if (update.status === 422) return 'conflict';
   return update.ok ? true : update;
+}
+
+/** assets/ 裡真的還在的檔（樹上不存在的路徑 GitHub 會拒絕整筆）。 */
+async function existingAssets(env: Bindings, paths: string[], ref: string): Promise<string[]> {
+  if (paths.length === 0) return [];
+  const dir = ghContents(env, IMAGE_DIR);
+  const list = await fetch(`${dir.api}?ref=${ref}`, { headers: dir.ghHeaders });
+  const have = new Set(list.ok ? (await list.json<{ path: string }[]>()).map((f) => f.path) : []);
+  return paths.filter((p) => have.has(p));
 }
 
 // 刪除：餐廳／景點／購物、攻略連同它從儀表板上傳的照片一起刪（一筆 commit，觸發網站重建），或拿掉一句待辦。
@@ -282,24 +305,74 @@ app.post('/api/delete', async (c) => {
     return c.json({ ok: true });
   }
 
+  const base = await gitHead(c.env);
+  if (base instanceof Response) return fail('git', base);
   const { api, ghHeaders } = ghContents(c.env, req.path);
-  const getRes = await fetch(`${api}?ref=${branch}`, { headers: ghHeaders });
+  const getRes = await fetch(`${api}?ref=${base.head}`, { headers: ghHeaders });
   if (getRes.status === 404) return c.json({ error: 'missing' }, 404);
   if (!getRes.ok) return fail('get', getRes);
-  let images = uploadedImages(fromBase64((await getRes.json<{ content: string }>()).content));
-  if (images.length) {
-    // 只刪 assets/ 裡真的還在的（樹上不存在的路徑 GitHub 會拒絕整筆）
-    const dir = ghContents(c.env, IMAGE_DIR);
-    const list = await fetch(`${dir.api}?ref=${branch}`, { headers: ghHeaders });
-    const have = new Set(list.ok ? (await list.json<{ path: string }[]>()).map((f) => f.path) : []);
-    images = images.filter((p) => have.has(p));
-  }
+  const images = await existingAssets(c.env, uploadedImages(fromBase64((await getRes.json<{ content: string }>()).content)), base.head);
   const what = req.kind === 'entity' ? `${req.category}「${req.id.slice(req.category.length + 1)}」` : `攻略「${req.id}」`;
   const removed = [req.path, ...images];
-  const r = await deleteFiles(c.env, removed, `chore(${req.kind}): 從儀表板刪除${what}`);
+  const r = await commitTree(c.env, base, removed.map((path) => ({ path, remove: true as const })), `chore(${req.kind}): 從儀表板刪除${what}`);
   if (r === 'conflict') return c.json({ error: 'sha conflict' }, 409);
   if (r !== true) return fail('git', r);
   return c.json({ ok: true, removed });
+});
+
+// 編輯餐廳／景點／購物：讀目前的檔，只改動過的欄位（其他段落照舊），改名就連檔名一起換、收藏跟著搬，
+// 拿掉的照片若是儀表板上傳的就從 assets/ 刪掉。全部一筆 commit，觸發網站重建。
+app.post('/api/entity/update', async (c) => {
+  const edit = parseEntityEdit(await c.req.json().catch(() => null));
+  if (typeof edit === 'string') return c.json({ error: 'invalid edit', detail: edit }, 400);
+  const fail = async (tag: string, res: Response) => {
+    const detail = await res.text();
+    console.log(`[edit] ${tag}`, res.status, detail);
+    return c.json(ghError(`github ${tag} failed`, res.status, detail), 502);
+  };
+  const base = await gitHead(c.env);
+  if (base instanceof Response) return fail('git', base);
+
+  const oldPath = `wiki/entities/${edit.id}.md`;
+  const { api, ghHeaders } = ghContents(c.env, oldPath);
+  const getRes = await fetch(`${api}?ref=${base.head}`, { headers: ghHeaders });
+  if (getRes.status === 404) return c.json({ error: 'missing' }, 404);
+  if (!getRes.ok) return fail('get', getRes);
+  const md = fromBase64((await getRes.json<{ content: string }>()).content);
+
+  const newId = editedId(edit);
+  const renamed = newId !== edit.id;
+  const newPath = `wiki/entities/${newId}.md`;
+  if (renamed) {
+    const exists = await fetch(`${ghContents(c.env, newPath).api}?ref=${base.head}`, { headers: ghHeaders });
+    if (exists.ok) return c.json({ error: 'exists', id: newId }, 409);
+    if (exists.status !== 404) return fail('get', exists);
+  }
+  const gone = await existingAssets(c.env,
+    edit.removeImages.filter((f) => IMAGE_FILE.test(f)).map((f) => `${IMAGE_DIR}/${f}`), base.head);
+  const entries: TreeEntry[] = [
+    { path: newPath, content: applyEntityEdit(md, edit, taipeiDate()) },
+    ...(renamed ? [{ path: oldPath, remove: true as const }] : []),
+    ...gone.map((path) => ({ path, remove: true as const })),
+  ];
+  const name = edit.changes.name ?? edit.id.slice(edit.category.length + 1);
+  const r = await commitTree(c.env, base, entries, `chore(entity): 從儀表板編輯${edit.category}「${name}」`);
+  if (r === 'conflict') return c.json({ error: 'sha conflict' }, 409);
+  if (r !== true) return fail('git', r);
+
+  if (renamed) {
+    // 收藏記在 D1，key 跟著 id 走：改名後搬到新 id（失敗也不影響已經存好的 vault）
+    try {
+      const fav = await c.env.DB.prepare('SELECT value FROM state WHERE key = ?1').bind(`fav:${edit.id}`).first<{ value: string }>();
+      if (fav?.value === '1') {
+        const now = new Date().toISOString();
+        const upsert = 'INSERT INTO state (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3';
+        await c.env.DB.prepare(upsert).bind(`fav:${newId}`, '1', now).run();
+        await c.env.DB.prepare(upsert).bind(`fav:${edit.id}`, '0', now).run();
+      }
+    } catch (e) { console.log('[edit] fav move failed', e); }
+  }
+  return c.json({ ok: true, id: newId });
 });
 
 export default app;

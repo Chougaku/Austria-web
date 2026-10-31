@@ -15,7 +15,7 @@ import EntityActions from '../components/EntityActions';
 import EntityDetail from '../components/EntityDetail';
 import { onCardClick } from '../lib/card-click';
 import { deletedKey, useDeleted } from '../lib/deleted';
-import { imagesIn } from '../lib/images';
+import { entityImages } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import type { AddableCategory } from '../api/add';
 import { useAddFlow } from '../lib/useAddFlow';
@@ -70,7 +70,7 @@ export default function Places() {
                   <Reveal key={p.id} index={i}>
                   <div className="card card--tap" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}
                     onClick={onCardClick(() => setDetail({ entity: p, start: 0 }))}>
-                    <Cover urls={imagesIn(p.body)} alt={p.name} onOpen={(i) => setDetail({ entity: p, start: i })} />
+                    <Cover urls={entityImages(p).map((i) => i.url)} alt={p.name} onOpen={(i) => setDetail({ entity: p, start: i })} />
                     <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', width: '100%' }}>
                       <Stamp rating={p.rating} />
                       <div style={{ flex: 1, minWidth: 0 }}>
@@ -110,7 +110,7 @@ export default function Places() {
                 <Reveal key={p.id} index={i}>
                 <div className="card card--tap" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}
                   onClick={onCardClick(() => setDetail({ entity: p, start: 0 }))}>
-                  <Cover urls={imagesIn(p.body)} alt={p.name} onOpen={(i) => setDetail({ entity: p, start: i })} />
+                  <Cover urls={entityImages(p).map((i) => i.url)} alt={p.name} onOpen={(i) => setDetail({ entity: p, start: i })} />
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>

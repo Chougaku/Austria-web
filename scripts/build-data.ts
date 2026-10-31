@@ -8,7 +8,7 @@ import { parseTodos } from './lib/parse-todos';
 import { parseGuide } from './lib/parse-guide';
 import { buildOverview } from './lib/parse-overview';
 import {
-  resolveGuideImage, guideImageKey, rewriteImageUrls, entityImageUrl, publishLocalImage, LOCAL_IMAGE_DIR,
+  resolveGuideImage, guideImageKey, rewriteImageUrls, entityImageUrl, publishLocalImage, LOCAL_IMAGE_DIR, extractImageSrcs,
 } from './lib/guide-images';
 
 export { buildOverview };
@@ -56,7 +56,14 @@ function main() {
     for (const f of fs.readdirSync(dir).filter((f) => isEntityFile(cat, f))) {
       try {
         const ent = parseEntity(cat, f, read(path.join(dir, f)));
-        ent.body = rewriteImageUrls(ent.body, (src) => (r2Base ? entityImageUrl(src, dir, assetRoots, r2Base) : localUrl(src, dir)));
+        // 每張圖記下 vault 裡的寫法（編輯時拿掉照片要用）與網站網址；找不到檔的不列
+        const urlOf = (src: string) => (/^https?:/i.test(src) ? src
+          : r2Base ? entityImageUrl(src, dir, assetRoots, r2Base) : localUrl(src, dir));
+        const images = extractImageSrcs(ent.body)
+          .map((file) => ({ file, url: urlOf(file) }))
+          .filter((i): i is { file: string; url: string } => !!i.url);
+        if (images.length) ent.images = images;
+        ent.body = rewriteImageUrls(ent.body, (src) => (/^https?:/i.test(src) ? null : urlOf(src)));
         entities.push(ent);
       } catch (e) {
         errors.push(e instanceof Error ? e.message : String(e));

@@ -118,6 +118,15 @@ Cloudflare 與 R2 設定。
 - 資料是建置時打包的，刪掉後先記在 localStorage `austria-deleted`（`src/lib/deleted.ts`，跟著 `meta.builtAt`，
   網站重建後作廢）把項目藏起來，各頁的列表、計數都會先扣掉。vault 是 git，刪錯可以從歷史救回。
 
+從儀表板編輯餐廳／景點／購物（詳細頁 `EntityDetail` 的「編輯」，表單同 `AddPlace`，帶 `edit` 就是編輯模式）：
+- 前端只送**動過的欄位**（`changes`）、拿掉的舊照片（`removeImages`＝`entity.images[].file`）、新上傳的（`addImages`）——
+  網站還沒重建前連續改兩次，沒動的欄位不會被舊值蓋回去。
+- `POST /api/entity/update` → `worker/src/entity-edit.ts` 的 `applyEntityEdit` 只改那幾處：frontmatter 的 `title`／`updated`、
+  開頭那段簡介、`## 基本資訊` 裡對應的那幾行（空字串＝刪那行）、拿掉圖片引用、新照片接在 `## 照片`；
+  手寫的其他段落（交通、評分、營業時間…）照舊。改名時檔名跟著換（同名已存在回 409），D1 的收藏 `fav:<舊id>` 搬到新 id。
+  新檔、刪舊檔、刪掉的上傳照片用 Git Data API 一筆 commit（讀檔也讀同一個 head，非 fast-forward 回 409）。
+- 建置時每筆地點記下 `images: { file, url }[]`（vault 寫法＋網站網址），編輯才知道要拿掉哪個檔。
+
 ### 狀態同步（收藏/待辦）
 
 `src/state/store.tsx` 的 `TripStateProvider`（`useTripState`）是收藏/待辦唯一狀態來源（localStorage key `austria-trip-state`）。
@@ -135,7 +144,7 @@ Cloudflare 與 R2 設定。
 ### Worker（`worker/src/index.ts`，Hono + D1）
 
 - 單一資料表 `state(key, value, updated_at)`（`worker/schema.sql`）。
-- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`、`POST /api/image`、`POST /api/delete`。
+- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`、`POST /api/image`、`POST /api/delete`、`POST /api/entity/update`。
 - `GET /api/state` 與 `POST /api/login` 免驗證，其餘要 `Authorization: Bearer <DASH_TOKEN>`。
 - CORS 白名單來自 `wrangler.toml` 的 `ALLOWED_ORIGINS`（逗號分隔，預設 `austria.pages.dev` 與 `chougaku.github.io`），
   本機任意 port 放行。綁自訂網域時改這裡。

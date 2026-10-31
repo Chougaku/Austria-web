@@ -78,7 +78,11 @@ describe('POST /api/delete', () => {
   });
 
   it('已經不在了回 404；分支剛被推了新東西回 409', async () => {
-    vi.stubGlobal('fetch', vi.fn(async () => json({ message: 'Not Found' }, 404)));
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/git/ref/heads/main')) return json({ object: { sha: 'h' } });
+      if (url.includes('/git/commits/')) return json({ tree: { sha: 't' } });
+      return json({ message: 'Not Found' }, 404);
+    }));
     expect((await post({ kind: 'guide', id: '咖啡館清單' })).status).toBe(404);
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes('/contents/')) return json({ content: b64('內文'), sha: 's' });

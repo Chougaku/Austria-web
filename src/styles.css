@@ -339,6 +339,14 @@ a { color: var(--red); }
 .detail-rating { font-size: 12px; font-weight: 700; color: var(--red); }
 .detail-area { font-size: 12px; color: var(--brown); }
 .detail-empty { margin: 0; font-size: 13px; color: var(--brown); }
+.detail-edit {
+  flex: none; align-self: center; padding: 5px 12px; border-radius: 8px; font-size: 12.5px; font-weight: 700;
+  border: 1px solid rgba(34,32,28,.3); color: var(--ink);
+}
+.detail-edit:hover { border-color: var(--ink); }
+.detail-title--edit { font-size: 17px; margin-bottom: 12px; padding-right: 40px; }
+/* 詳細頁裡的編輯表單：已經在卡片裡了，不再包一層卡片 */
+.add-form.add-form--edit { padding: 0; margin: 0; }
 
 /* 照片列：一次一張，左右滑或按箭頭 */
 .gallery { position: relative; background: #1d1b18; }

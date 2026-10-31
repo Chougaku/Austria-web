@@ -31,9 +31,10 @@ type ErrorBody = { error?: string; reason?: string; status?: number; detail?: st
 export function addErrorMessage(status: number, body: ErrorBody | null, what: string): string {
   if (status === 401) return '登入已失效，請重新登入後再新增';
   if (status === 409) return body?.error === 'sha conflict'
-    ? '檔案剛被改過，請再按一次新增'
+    ? '檔案剛被改過，請再送出一次'
     : `已經有同名的${what}了，換個名稱，或直接到 vault 修改`;
   if (status === 400) return body?.detail ?? '資料格式不對，無法新增';
+  if (status === 404) return '找不到這筆資料（可能剛被改名或刪除），等網站更新後再試';
   if (body?.reason === 'github-auth') return 'Worker 的 GitHub token 已失效或權限不足，需重新設定 GITHUB_TOKEN';
   if (status === 502) return `寫入 vault 失敗（${body?.status ?? '未知狀態'}），請稍後再試`;
   return `新增失敗（HTTP ${status}）`;
@@ -63,6 +64,16 @@ const postJson = (path: string, payload: unknown, what: string) => post(path, JS
 export const addEntity = (input: NewEntityInput) => postJson('/api/entity', input, '地點');
 export const addGuide = (input: NewGuideInput) => postJson('/api/guide', input, '攻略');
 export const addTodo = (text: string) => postJson('/api/todo', { text }, '待辦');
+
+/** 編輯餐廳／景點／購物：只送動過的欄位（沒動的不送，免得網站還沒重建時把上一次的修改蓋回去）。
+    removeImages 是 vault 裡的寫法（ImageRef.file），addImages 是 uploadImage 拿到的檔名。回傳新的 id（改名時會變）。 */
+export interface EntityUpdate {
+  id: string;
+  changes: Partial<Record<'name' | 'type' | 'city' | 'location' | 'address' | 'ticket' | 'price' | 'summary', string>>;
+  removeImages: string[];
+  addImages: string[];
+}
+export const updateEntity = (u: EntityUpdate) => postJson('/api/entity/update', u, '地點');
 
 /** 上傳一張（已縮好的）圖片到 vault 的 assets/，回傳檔名（id）給新增或行程用 `![[檔名]]` 嵌入。
     這一步不會觸發網站重建，要等後面的新增／存檔送出才一起重建。 */

@@ -17,7 +17,7 @@ import EntityDetail from '../components/EntityDetail';
 import { onCardClick } from '../lib/card-click';
 import type { Entity } from '../data/schema';
 import { deletedKey, useDeleted } from '../lib/deleted';
-import { imagesIn } from '../lib/images';
+import { entityImages } from '../lib/images';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import { useAddFlow } from '../lib/useAddFlow';
 
@@ -125,7 +125,7 @@ export default function Food() {
             <Reveal key={r.id} index={i}>
             <div className="card card--tap" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}
               onClick={onCardClick(() => setDetail({ entity: r, start: 0 }))}>
-              <Cover urls={imagesIn(r.body)} alt={r.name} onOpen={(i) => setDetail({ entity: r, start: i })} />
+              <Cover urls={entityImages(r).map((i) => i.url)} alt={r.name} onOpen={(i) => setDetail({ entity: r, start: i })} />
               <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
               <Stamp rating={r.rating} />
               <div style={{ flex: 1, minWidth: 0 }}>

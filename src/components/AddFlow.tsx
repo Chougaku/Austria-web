@@ -15,8 +15,8 @@ export function AddedNotice({ names }: { names: string[] }) {
 }
 
 /** 表單底部：錯誤訊息＋說明＋取消／送出。 */
-export function AddFormFooter({ error, busy, busyText, submitLabel, onCancel }: {
-  error: string | null; busy: boolean; busyText?: string; submitLabel: string; onCancel: () => void;
+export function AddFormFooter({ error, busy, busyText, submitLabel, onCancel, note = '存進 vault，網站重建後（約 1–2 分鐘）就會出現' }: {
+  error: string | null; busy: boolean; busyText?: string; submitLabel: string; onCancel: () => void; note?: string;
 }) {
   return (
     <>
@@ -26,7 +26,7 @@ export function AddFormFooter({ error, busy, busyText, submitLabel, onCancel }: 
         </div>
       )}
       <div className="add-form-actions">
-        <span className="add-form-note">存進 vault，網站重建後（約 1–2 分鐘）就會出現</span>
+        <span className="add-form-note">{note}</span>
         <button type="button" className="btn-plain add-form-btn" onClick={onCancel} disabled={busy}>取消</button>
         <button type="submit" className="btn-plain add-form-btn add-form-btn--primary" disabled={busy}>
           {busy ? (busyText ?? '新增中…') : submitLabel}
