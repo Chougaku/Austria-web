@@ -58,6 +58,8 @@ export const GuideSchema = z.object({
   source: z.string(),
   sourceUrl: z.string(),
   body: z.string().min(1),
+  /** 內文裡網站顯示得出來的圖（建置時算）：vault 寫法＋網站網址，編輯時用。 */
+  images: z.array(ImageRefSchema).optional(),
 });
 export type Guide = z.infer<typeof GuideSchema>;
 

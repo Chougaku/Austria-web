@@ -22,7 +22,7 @@ describe('新增實體的欄位整理', () => {
   it('名稱有冒號、引號也是合法 frontmatter；空欄位不寫', () => {
     const md = entityMarkdown({
       category: '景點', name: 'Schloss: "Belvedere"', type: '', city: '', location: '',
-      address: '', ticket: '', price: '', summary: '# 開頭是井號', images: [],
+      address: '', ticket: '', price: '', summary: '# 開頭是井號', rating: '', images: [],
     }, '2026-10-09');
     expect(md).toContain('title: "Schloss: \\"Belvedere\\""');
     expect(md).toContain('tags: ["景點"]');

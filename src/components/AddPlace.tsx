@@ -6,6 +6,7 @@ import { uploadAll } from '../lib/image-file';
 import { entityImages } from '../lib/images';
 import { AddFormFooter } from './AddFlow';
 import ImagePicker, { type PickedImage } from './ImagePicker';
+import { StarInput } from './Stars';
 
 const MAX_IMAGES = 10;
 
@@ -39,6 +40,8 @@ export default function AddPlace({ category, edit, onCancel, onAdded }: {
     ticket: field(edit, '門票'),
     price: field(edit, '價位'),
     summary: edit?.summary ?? '',
+    // vault 裡手寫的可能是 4.4，星星只有整數：沒去點就不送，原本的小數不會被改掉
+    rating: edit?.rating != null ? Math.round(edit.rating) : 0,
   };
   const [name, setName] = useState(initial.name);
   const [type, setType] = useState(initial.type);
@@ -47,6 +50,7 @@ export default function AddPlace({ category, edit, onCancel, onAdded }: {
   const [ticket, setTicket] = useState(initial.ticket);
   const [price, setPrice] = useState(initial.price);
   const [summary, setSummary] = useState(initial.summary);
+  const [rating, setRating] = useState(initial.rating);
   const [kept, setKept] = useState<ImageRef[]>(() => (edit ? entityImages(edit) : []));
   const [images, setImages] = useState<PickedImage[]>([]);
   const [busy, setBusy] = useState(false);
@@ -68,6 +72,7 @@ export default function AddPlace({ category, edit, onCancel, onAdded }: {
     if (category === '景點' && now.ticket !== initial.ticket) c.ticket = now.ticket;
     if (category === '餐廳' && now.price !== initial.price) c.price = now.price;
     if (area !== initial.area) Object.assign(c, place(area));
+    if (rating !== initial.rating) c.rating = rating ? String(rating) : '';
     return c;
   };
 
@@ -91,7 +96,8 @@ export default function AddPlace({ category, edit, onCancel, onAdded }: {
       } else {
         await addEntity({
           category, name: title, type, ...place(area), address,
-          ticket: category === '景點' ? ticket : '', price: category === '餐廳' ? price : '', summary, images: files,
+          ticket: category === '景點' ? ticket : '', price: category === '餐廳' ? price : '', summary,
+          rating: rating ? String(rating) : '', images: files,
         });
       }
       onAdded(title);
@@ -135,6 +141,10 @@ export default function AddPlace({ category, edit, onCancel, onAdded }: {
           <input value={extra.value} onChange={(e) => extra.set(e.target.value)} disabled={busy} placeholder={extra.hint} />
         </label>
       )}
+      <div className="add-form-wide add-form-field">
+        <span>評分</span>
+        <StarInput value={rating} onChange={setRating} disabled={busy} />
+      </div>
       <label className="add-form-wide">
         簡介
         <textarea value={summary} onChange={(e) => setSummary(e.target.value)} disabled={busy} rows={edit ? 3 : 2}

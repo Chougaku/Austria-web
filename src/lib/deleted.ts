@@ -35,5 +35,33 @@ export function useDeleted(): Set<string> {
   return useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, read);
 }
 
+/** 網站上改過字的待辦（舊文字 → 新文字）：一樣是網站重建前先顯示新文字，重建後作廢。 */
+const RENAME_KEY = 'austria-todo-renames';
+type StoredRenames = { builtAt: string; map: Record<string, string> };
+let renames: Record<string, string> | null = null;
+
+function readRenames(): Record<string, string> {
+  if (renames) return renames;
+  try {
+    const s = JSON.parse(localStorage.getItem(RENAME_KEY) ?? 'null') as StoredRenames | null;
+    renames = s && s.builtAt === meta.builtAt ? s.map : {};
+  } catch { renames = {}; }
+  return renames;
+}
+
+export function markTodoRenamed(text: string, next: string): void {
+  // 同一句連改兩次：最早那個原文都指到最新的字
+  const prev = readRenames();
+  const original = Object.keys(prev).find((k) => prev[k] === text) ?? text;
+  renames = { ...prev, [original]: next };
+  try { localStorage.setItem(RENAME_KEY, JSON.stringify({ builtAt: meta.builtAt, map: renames })); } catch { /* 忽略 */ }
+  for (const l of listeners) l();
+}
+
+/** 原本的待辦文字 → 現在要顯示的文字（沒改過的不在裡面）。 */
+export function useTodoRenames(): Record<string, string> {
+  return useSyncExternalStore((cb) => { listeners.add(cb); return () => { listeners.delete(cb); }; }, readRenames);
+}
+
 /** 測試用：清掉記憶體裡的清單，下次重讀 localStorage。 */
-export function resetDeletedCache(): void { current = null; }
+export function resetDeletedCache(): void { current = null; renames = null; }

@@ -375,6 +375,35 @@ a { color: var(--red); }
 .gallery--full .gallery-slide { aspect-ratio: auto; height: 100%; padding: 48px 8px; cursor: default; }
 @media (max-width: 640px) { .gallery-nav { width: 34px; height: 34px; font-size: 22px; line-height: 32px; } }
 
+/* 五顆星評分：顯示用的依分數填滿（紅＝評分，跟評分郵戳同一個顏色）；輸入用的是五個按鈕 */
+.stars { display: inline-flex; align-items: center; gap: 5px; line-height: 1; vertical-align: middle; }
+.stars-track { position: relative; display: inline-block; color: rgba(34,32,28,.18); letter-spacing: 1px; white-space: nowrap; }
+.stars-fill { position: absolute; inset: 0 auto 0 0; overflow: hidden; color: var(--red); white-space: nowrap; }
+.stars--sm { font-size: 12.5px; margin-top: 4px; }
+.stars--md { font-size: 15px; }
+.stars-value { font-family: var(--serif); font-size: 12px; font-weight: 700; color: var(--red); }
+.star-input { display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.star-input-btn {
+  width: 34px; height: 34px; padding: 0; border: none; background: none; cursor: pointer;
+  font-size: 24px; line-height: 34px; color: rgba(34,32,28,.2); transition: color .12s ease, transform .12s ease;
+}
+.star-input-btn--on { color: var(--red); }
+.star-input-btn:hover:not(:disabled) { transform: scale(1.12); }
+.star-input-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 1px; border-radius: 6px; }
+.star-input-btn:disabled { cursor: default; opacity: .6; }
+.star-input-text { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--brown); letter-spacing: 0; }
+.detail-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: -4px 0 14px; }
+.detail-rate-label { font-size: 12px; font-weight: 700; color: var(--brown); letter-spacing: .06em; }
+.detail-rate-note { font-size: 12px; color: var(--brown); }
+.detail-rate-note--ok { color: var(--green); font-weight: 600; }
+.detail-rate-note--err { color: var(--red); font-weight: 600; }
+
+/* 攻略卡片裡的編輯、首頁待辦的改字 */
+.guide-edit { padding: 14px 22px 18px; }
+.guide-edit-note { margin: 0; font-size: 13px; color: var(--brown); }
+.guide-saved { margin: 0 22px 14px; }
+.todo-edit { margin: 0; padding: 8px 0; }
+
 /* 刪除（登入後才出現）：卡片右上角收藏底下、攻略標題列、待辦每一行的右邊 */
 .card-actions { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .del-btn {

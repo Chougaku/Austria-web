@@ -36,5 +36,19 @@ export function parseImageList(v: unknown, max: number): string[] | string {
   return v as string[];
 }
 
+/** 同 scripts/lib/text.ts 的 stripWikilinks：網站上看到的待辦文字是去掉 [[ ]] 之後的。 */
+export const stripWikilinks = (s: string) =>
+  s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2').replace(/\[\[([^\]]+)\]\]/g, (_, p: string) => p.split('/').pop() ?? p);
+
+/** 同 scripts/lib/text.ts 的 todoKey：待辦勾選狀態在 D1 的 key（文字的雜湊，改字就換 key）。 */
+export function todoKey(text: string): string {
+  let h = 5381;
+  for (const ch of text) h = ((h * 33) ^ (ch.codePointAt(0) ?? 0)) >>> 0;
+  return 'todo:' + h.toString(16);
+}
+
+/** 評分：0–5，最多一位小數（網站上點星星給的是 1–5 的整數；vault 裡手寫的可能是 4.4）。 */
+export const RATING = /^(?:[0-4](?:\.\d)?|5(?:\.0)?)$/;
+
 /** Obsidian 的圖片嵌入，一張一行。 */
 export const imageEmbeds = (files: string[]) => files.map((f) => `![[${f}]]`);

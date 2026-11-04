@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, cleanup, screen, fireEvent, waitFor } from '@testing-library/react';
 import Guides from '../Guides';
 import { resetDeletedCache } from '../../lib/deleted';
-const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn(), deleteItem: vi.fn() }));
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn(), deleteItem: vi.fn(), getGuideRaw: vi.fn(), updateGuide: vi.fn(), updateTodo: vi.fn() }));
 vi.mock('../../api/add', () => api);
 import { TripStateProvider } from '../../state/store';
 
@@ -168,5 +168,35 @@ describe('Guides 刪除攻略', () => {
     expect(api.deleteItem).toHaveBeenCalledWith({ kind: 'guide', id: 'g2' });
     expect(screen.getByText('維也納美食攻略')).toBeTruthy();
     expect(screen.queryByText('收合 ▲')).toBeNull();
+  });
+});
+
+describe('Guides 編輯攻略', () => {
+  afterEach(() => { cleanup(); api.getGuideRaw.mockReset(); api.updateGuide.mockReset(); localStorage.clear(); resetDeletedCache(); });
+  const raw = { id: 'g2', author: '小明', url: 'https://example.com/a', body: 'ICOCA 卡使用方式', images: ['20261104-aaaaaaaa.jpg'] };
+
+  it('按編輯先讀 vault 原文帶進表單；只送改過的、拿掉的圖；存好後提示', async () => {
+    api.getGuideRaw.mockResolvedValue(raw);
+    api.updateGuide.mockResolvedValue({ id: 'g2' });
+    renderGuides();
+    fireEvent.click(screen.getAllByRole('button', { name: '編輯' })[1]);
+    const form = await screen.findByRole('form', { name: '編輯攻略' });
+    expect(api.getGuideRaw).toHaveBeenCalledWith('g2');
+    expect((screen.getByLabelText('作者／來源') as HTMLInputElement).value).toBe('小明');
+    expect((screen.getByLabelText('內容（必填）') as HTMLTextAreaElement).value).toBe('ICOCA 卡使用方式');
+    fireEvent.change(screen.getByLabelText('內容（必填）'), { target: { value: '維也納交通卡使用方式' } });
+    fireEvent.click(screen.getByRole('button', { name: '拿掉原本的第 1 張' }));
+    fireEvent.submit(form);
+    await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已儲存'));
+    expect(api.updateGuide).toHaveBeenCalledWith({
+      id: 'g2', changes: { body: '維也納交通卡使用方式' }, removeImages: ['20261104-aaaaaaaa.jpg'], addImages: [],
+    });
+  });
+
+  it('讀不到原文時顯示原因', async () => {
+    api.getGuideRaw.mockRejectedValue(new Error('找不到這篇（可能剛被改名或刪除），等網站更新後再試'));
+    renderGuides();
+    fireEvent.click(screen.getAllByRole('button', { name: '編輯' })[0]);
+    expect((await screen.findByRole('alert')).textContent).toContain('找不到這篇');
   });
 });

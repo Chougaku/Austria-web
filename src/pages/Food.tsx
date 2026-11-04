@@ -12,6 +12,7 @@ import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
 import Cover from '../components/Cover';
+import { Stars } from '../components/Stars';
 import EntityActions from '../components/EntityActions';
 import EntityDetail from '../components/EntityDetail';
 import { onCardClick } from '../lib/card-click';
@@ -134,6 +135,7 @@ export default function Food() {
                     <HitText segments={makeSegments(r.name, tokens)} />
                   </button>
                 </div>
+                <Stars value={r.rating} />
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7, alignItems: 'center' }}>
                   <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--navy)', border: '1px solid rgba(30,53,92,.4)', borderRadius: 4, padding: '1.5px 7px' }}>{r.fields['類型'] ?? '未分類'}</span>
                   <span style={{ fontSize: 12, color: 'var(--brown)' }}>{r.fields['價位'] && r.fields['價位'] !== '-' ? r.fields['價位'] : '價位未記'}</span>

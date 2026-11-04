@@ -8,9 +8,8 @@ import WishList from '../components/WishList';
 import AddTodo from '../components/AddTodo';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import { useAddFlow } from '../lib/useAddFlow';
-import DeleteButton from '../components/DeleteButton';
-import { deleteItem } from '../api/add';
-import { deletedKey, markDeleted, useDeleted } from '../lib/deleted';
+import TodoRow from '../components/TodoRow';
+import { deletedKey, useDeleted, useTodoRenames } from '../lib/deleted';
 import GuideFavCard from '../components/GuideFavCard';
 import RouteHero from '../components/RouteHero';
 import DioramaScene from '../components/DioramaScene';
@@ -23,6 +22,7 @@ export default function Home() {
   const addTodo = useAddFlow();
   const [wishOpen, setWishOpen] = useState(false);
   const deleted = useDeleted();
+  const renames = useTodoRenames();
   // 剛從網站刪掉的先藏起來（網站重建後 vault 裡就沒有了）
   const favEntities = entities.filter((e) => favs[`fav:${e.id}`] && !deleted.has(deletedKey.entity(e.id)));
   const todos = builtTodos.filter((t) => !deleted.has(deletedKey.todo(t.text)));
@@ -191,26 +191,10 @@ export default function Home() {
             {!addTodo.open && <AddButton label="待辦" onClick={addTodo.start} />}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', marginTop: 10 }}>
-            {todos.map((t) => {
-              const on = !!todosState[t.key];
-              return (
-                <div key={t.key} className="dash-bottom todo-row">
-                <button className="btn-plain"
-                  style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', textAlign: 'left', opacity: canEdit ? 1 : 0.6 }}
-                  onClick={() => (canEdit ? toggleTodo(t.key) : openLogin())}>
-                  <span style={{
-                    flex: 'none', width: 20, height: 20, borderRadius: 4,
-                    border: `1.6px solid ${on ? 'var(--green)' : 'rgba(34,32,28,.4)'}`,
-                    background: on ? 'var(--green)' : 'transparent', color: '#F8F5EE',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700,
-                  }}>{on ? '✓' : ''}</span>
-                  <span style={{ fontSize: 13.5, color: on ? 'var(--brown)' : 'var(--ink)', textDecoration: on ? 'line-through' : 'none' }}>{t.text}</span>
-                </button>
-                <DeleteButton name={t.text} confirmText={`確定刪除待辦「${t.text}」？`}
-                  onDelete={async () => { await deleteItem({ kind: 'todo', text: t.text }); markDeleted(deletedKey.todo(t.text)); }} />
-                </div>
-              );
-            })}
+            {todos.map((t) => (
+              <TodoRow key={t.key} todo={t} text={renames[t.text] ?? t.text} on={!!todosState[t.key]} canEdit={canEdit}
+                onToggle={() => toggleTodo(t.key)} onLogin={openLogin} />
+            ))}
           </div>
           <AddedNotice names={addTodo.added} />
           {addTodo.open && <AddTodo onCancel={addTodo.cancel} onAdded={addTodo.done} />}

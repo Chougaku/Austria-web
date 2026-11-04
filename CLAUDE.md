@@ -126,6 +126,20 @@ Cloudflare 與 R2 設定。
   手寫的其他段落（交通、評分、營業時間…）照舊。改名時檔名跟著換（同名已存在回 409），D1 的收藏 `fav:<舊id>` 搬到新 id。
   新檔、刪舊檔、刪掉的上傳照片用 Git Data API 一筆 commit（讀檔也讀同一個 head，非 fast-forward 回 409）。
 - 建置時每筆地點記下 `images: { file, url }[]`（vault 寫法＋網站網址），編輯才知道要拿掉哪個檔。
+- 評分（5 顆星，`src/components/Stars.tsx`：`Stars` 顯示、`StarInput` 點選）：寫在 `## 基本資訊` 的 `- 評分：4`，
+  解析成 `entity.rating`。新增／編輯表單都有；詳細頁登入後直接點星星就存（`QuickRating` → 只送 `changes.rating`）。
+  手寫的小數（4.4）顯示四顆多一點；表單沒去點星星就不送，小數不會被改成整數。卡片保留評分郵戳，名稱下多一排星星。
+
+從儀表板編輯攻略（攻略卡片標題列的「編輯」，登入後才有）：
+- 網站上的攻略是建置過的版本（wikilink 拿掉、圖換成網站網址），拿去改會寫壞 vault，所以先 `GET /api/guide?id=`
+  從 vault 讀原文（`worker/src/guide-edit.ts` 的 `splitGuide`：作者、原文網址、內文、從儀表板上傳的圖）。
+- `POST /api/guide/update`：只送動過的（標題＝檔名，改了就換檔名、典藏 `guide:<id>` 跟著搬）；上傳的圖固定接在內文最後，
+  拿掉的從 `assets/` 刪；內文裡別的圖、wikilink 照原樣。一筆 commit。
+- 攻略解析（`parse-guide.ts`）要先 `embedsToImageMarkdown` 再 `stripWikilinks`，不然 `![[圖]]` 會被拆成「!圖」。
+
+從儀表板改待辦的字（首頁每一行的鉛筆）：`POST /api/todo/update`（`renameTodo`：勾選框照舊、同名 409），
+D1 的勾選記錄 key 是文字雜湊（`todoKey`），Worker 跟著搬。網站重建前先顯示新字：localStorage `austria-todo-renames`
+（`src/lib/deleted.ts` 的 `markTodoRenamed`／`useTodoRenames`，跟著 `meta.builtAt` 作廢）。
 
 ### 狀態同步（收藏/待辦）
 
@@ -144,7 +158,7 @@ Cloudflare 與 R2 設定。
 ### Worker（`worker/src/index.ts`，Hono + D1）
 
 - 單一資料表 `state(key, value, updated_at)`（`worker/schema.sql`）。
-- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`、`POST /api/image`、`POST /api/delete`、`POST /api/entity/update`。
+- 路由：`GET /api/state`、`PUT /api/state/:key`、`POST /api/login`、`PUT /api/itinerary`、`POST /api/entity`、`POST /api/todo`、`POST /api/guide`、`POST /api/image`、`POST /api/delete`、`POST /api/entity/update`、`GET /api/guide`、`POST /api/guide/update`、`POST /api/todo/update`。
 - `GET /api/state` 與 `POST /api/login` 免驗證，其餘要 `Authorization: Bearer <DASH_TOKEN>`。
 - CORS 白名單來自 `wrangler.toml` 的 `ALLOWED_ORIGINS`（逗號分隔，預設 `austria.pages.dev` 與 `chougaku.github.io`），
   本機任意 port 放行。綁自訂網域時改這裡。

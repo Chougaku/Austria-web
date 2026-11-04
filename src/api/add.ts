@@ -18,6 +18,8 @@ export interface NewEntityInput {
   /** 餐廳才有 */
   price: string;
   summary: string;
+  /** 評分 1–5，空字串＝沒評 */
+  rating: string;
   /** uploadImage 拿到的檔名；第一張是卡片封面。 */
   images: string[];
 }
@@ -69,11 +71,38 @@ export const addTodo = (text: string) => postJson('/api/todo', { text }, '待辦
     removeImages 是 vault 裡的寫法（ImageRef.file），addImages 是 uploadImage 拿到的檔名。回傳新的 id（改名時會變）。 */
 export interface EntityUpdate {
   id: string;
-  changes: Partial<Record<'name' | 'type' | 'city' | 'location' | 'address' | 'ticket' | 'price' | 'summary', string>>;
+  changes: Partial<Record<'name' | 'type' | 'city' | 'location' | 'address' | 'ticket' | 'price' | 'summary' | 'rating', string>>;
   removeImages: string[];
   addImages: string[];
 }
 export const updateEntity = (u: EntityUpdate) => postJson('/api/entity/update', u, '地點');
+
+/** 編輯攻略用的原始內容（從 vault 讀，不是網站上建置過的版本）：images 是內文裡從儀表板上傳的圖。 */
+export interface GuideRaw { id: string; author: string; url: string; body: string; images: string[] }
+
+export async function getGuideRaw(id: string): Promise<GuideRaw> {
+  let res: Response;
+  try {
+    res = await fetch(`${apiBase()}/api/guide?id=${encodeURIComponent(id)}`, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch {
+    throw new Error('連不上伺服器，請確認網路後再試');
+  }
+  if (res.status === 404) throw new Error('找不到這篇（可能剛被改名或刪除），等網站更新後再試');
+  if (!res.ok) throw new Error(`讀不到攻略內容（HTTP ${res.status}）`);
+  return res.json() as Promise<GuideRaw>;
+}
+
+/** 編輯攻略：只送動過的欄位；標題就是檔名，改了會換檔名。 */
+export interface GuideUpdate {
+  id: string;
+  changes: Partial<Record<'title' | 'author' | 'url' | 'body', string>>;
+  removeImages: string[];
+  addImages: string[];
+}
+export const updateGuide = (u: GuideUpdate) => postJson('/api/guide/update', u, '攻略');
+
+/** 改一句待辦的文字（勾選狀態照舊）。 */
+export const updateTodo = (text: string, next: string) => postJson('/api/todo/update', { text, next }, '待辦');
 
 /** 上傳一張（已縮好的）圖片到 vault 的 assets/，回傳檔名（id）給新增或行程用 `![[檔名]]` 嵌入。
     這一步不會觸發網站重建，要等後面的新增／存檔送出才一起重建。 */

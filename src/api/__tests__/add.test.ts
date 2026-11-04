@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { addEntity, addGuide, addTodo, deleteItem, type NewEntityInput } from '../add';
 
 const input: NewEntityInput = {
-  category: '景點', name: '霍夫堡', type: '宮殿', city: '維也納', location: '維也納', address: '', ticket: '', price: '', summary: '', images: [],
+  category: '景點', name: '霍夫堡', type: '宮殿', city: '維也納', location: '維也納', address: '', ticket: '', price: '', summary: '', rating: '', images: [],
 };
 
 beforeEach(() => {

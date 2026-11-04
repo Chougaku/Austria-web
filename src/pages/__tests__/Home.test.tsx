@@ -4,7 +4,7 @@ import { render, screen, cleanup, waitFor, fireEvent } from '@testing-library/re
 import { TripStateProvider } from '../../state/store';
 import Home from '../Home';
 import { resetDeletedCache } from '../../lib/deleted';
-const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn(), deleteItem: vi.fn() }));
+const api = vi.hoisted(() => ({ addEntity: vi.fn(), addGuide: vi.fn(), addTodo: vi.fn(), uploadImage: vi.fn(), deleteItem: vi.fn(), getGuideRaw: vi.fn(), updateGuide: vi.fn(), updateTodo: vi.fn() }));
 vi.mock('../../api/add', () => api);
 
 vi.mock('../../state/auth', () => ({
@@ -128,5 +128,33 @@ describe('Home 刪除待辦', () => {
     await waitFor(() => expect(screen.queryByText('換歐元')).toBeNull());
     expect(api.deleteItem).toHaveBeenCalledWith({ kind: 'todo', text: '換歐元' });
     expect(screen.getByText('0 / 1 完成')).toBeTruthy();
+  });
+});
+
+describe('Home 修改待辦', () => {
+  afterEach(() => { cleanup(); api.updateTodo.mockReset(); localStorage.clear(); resetDeletedCache(); });
+
+  it('按鉛筆改字、存好後馬上顯示新的字', async () => {
+    api.updateTodo.mockResolvedValue({ id: '' });
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: '修改「換歐元」' }));
+    fireEvent.change(screen.getByLabelText('待辦內容'), { target: { value: '換歐元現金 500' } });
+    fireEvent.submit(screen.getByRole('form', { name: '修改待辦' }));
+    await waitFor(() => expect(screen.getByText('換歐元現金 500')).toBeTruthy());
+    expect(api.updateTodo).toHaveBeenCalledWith('換歐元', '換歐元現金 500');
+    expect(screen.queryByText('換歐元')).toBeNull();
+  });
+
+  it('改失敗顯示原因、輸入框留著；清空不送', async () => {
+    api.updateTodo.mockRejectedValue(new Error('已經有同名的待辦了'));
+    renderHome();
+    fireEvent.click(screen.getByRole('button', { name: '修改「訂機票」' }));
+    fireEvent.change(screen.getByLabelText('待辦內容'), { target: { value: '  ' } });
+    fireEvent.submit(screen.getByRole('form', { name: '修改待辦' }));
+    expect(screen.getByRole('alert').textContent).toContain('請填待辦內容');
+    fireEvent.change(screen.getByLabelText('待辦內容'), { target: { value: '換歐元' } });
+    fireEvent.submit(screen.getByRole('form', { name: '修改待辦' }));
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toContain('同名'));
+    expect(screen.getByRole('form', { name: '修改待辦' })).toBeTruthy();
   });
 });

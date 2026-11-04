@@ -1,12 +1,14 @@
 import matter from 'gray-matter';
 import { GuideSchema, type Guide } from '../../src/data/schema';
 import { stripWikilinks } from './text';
+import { embedsToImageMarkdown } from './guide-images';
 
 /** 解析 `原始資料/別人行程/*.md`：標題取檔名，來源取 frontmatter 或內文 `> 來源：`。 */
 export function parseGuide(filename: string, raw: string): Guide {
   const id = filename.replace(/\.md$/, '');
   const { data, content } = matter(raw);
-  const body = stripWikilinks(content.trim());
+  // 先把 Obsidian 圖片嵌入 ![[x.jpg]] 轉成 ![](x.jpg)，再拿掉 wikilink——反過來的話嵌入會被當成連結拆掉，只剩「!x.jpg」
+  const body = stripWikilinks(embedsToImageMarkdown(content.trim()));
 
   let source = '';
   let sourceUrl = '';

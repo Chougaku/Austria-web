@@ -13,7 +13,8 @@ import AddGuide from '../components/AddGuide';
 import { AddButton, AddedNotice } from '../components/AddFlow';
 import { useAddFlow } from '../lib/useAddFlow';
 import DeleteButton from '../components/DeleteButton';
-import { deleteItem } from '../api/add';
+import { deleteItem, getGuideRaw, type GuideRaw } from '../api/add';
+import { useAuth } from '../state/auth';
 import { deletedKey, markDeleted, useDeleted } from '../lib/deleted';
 
 const NL = String.fromCharCode(10);
@@ -24,6 +25,15 @@ function GuideCard({ g, tokens, isOpen, onToggle }: {
   const bodyRef = useRef<HTMLDivElement>(null);
   useMarkText(bodyRef, tokens, isOpen);
   const snippet = tokens.length > 0 ? makeSnippet(g.body, tokens) : null;
+  const { canEdit } = useAuth();
+  // 編輯：先從 vault 讀原始內容（網站上的是建置過的版本，拿來改會把 wikilink、圖片寫壞）
+  const [edit, setEdit] = useState<null | 'loading' | { raw: GuideRaw } | { error: string }>(null);
+  const [saved, setSaved] = useState(false);
+  const startEdit = () => {
+    setSaved(false);
+    setEdit('loading');
+    getGuideRaw(g.id).then((raw) => setEdit({ raw }), (e: unknown) => setEdit({ error: e instanceof Error ? e.message : '讀不到攻略內容' }));
+  };
 
   return (
     <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -50,12 +60,34 @@ function GuideCard({ g, tokens, isOpen, onToggle }: {
           )}
         </div>
         <GuideStar guideId={g.id} />
+        {canEdit && !edit && (
+          <button type="button" className="btn-plain detail-edit" onClick={(e) => { e.stopPropagation(); startEdit(); }}>編輯</button>
+        )}
         <DeleteButton name={g.title} confirmText={`確定刪除攻略「${g.title}」？${NL}會連同它的圖片從 vault 刪掉，網站重建後就不見了。`}
           onDelete={async () => { await deleteItem({ kind: 'guide', id: g.id }); markDeleted(deletedKey.guide(g.id)); }} />
         <span className="serif" style={{ fontSize: 13, color: 'var(--red)', fontWeight: 700, flex: 'none' }}>
           {isOpen ? '收合 ▲' : '展開 ▼'}
         </span>
       </div>
+      {saved && (
+        <div role="status" className="plan-msg plan-msg--ok guide-saved">
+          <span className="plan-msg-mark" aria-hidden="true">✓</span>已儲存，網站重建後（約 1–2 分鐘）重新整理就會更新
+        </div>
+      )}
+      {edit && (
+        <div className="guide-edit dash-top">
+          {edit === 'loading' ? <p className="guide-edit-note">讀取原始內容…</p>
+            : 'error' in edit ? (
+              <div role="alert" className="plan-msg plan-msg--err" style={{ marginTop: 0 }}>
+                <span className="plan-msg-mark" aria-hidden="true">！</span>{edit.error}
+                <button type="button" className="btn-plain add-form-btn" style={{ marginLeft: 'auto' }} onClick={() => setEdit(null)}>關閉</button>
+              </div>
+            ) : (
+              <AddGuide edit={{ guide: g, raw: edit.raw }} onCancel={() => setEdit(null)}
+                onAdded={() => { setEdit(null); setSaved(true); }} />
+            )}
+        </div>
+      )}
       <div className={`guide-body${isOpen ? ' guide-body--open' : ''}`} aria-hidden={!isOpen}>
         <div>
           <div ref={bodyRef} className="dash-top" style={{ padding: '2px 22px 18px' }}>

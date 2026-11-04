@@ -1,6 +1,6 @@
 // 從儀表板新增出發前待辦：在行程筆記的 `## ✅ 待辦` 段落最後補一行 `- [ ] …`。
 // 格式要讓 scripts/lib/parse-todos.ts 讀得懂；勾選狀態另存 D1，這裡只管清單本身。
-import { oneLine } from './text';
+import { oneLine, stripWikilinks } from './text';
 
 /** vault 裡放待辦的檔（跟 scripts/build-data.ts 的 TODO_FILE 同一個）。 */
 export const TODO_PATH = 'Austria Trip/行程筆記.md';
@@ -29,5 +29,26 @@ export function insertTodo(md: string, text: string): string | null {
   }
   const at = last >= 0 ? last + 1 : head + 1;
   lines.splice(at, 0, ...(last >= 0 ? [] : ['']), `- [ ] ${text}`);
+  return lines.join('\n');
+}
+
+/** 把待辦段落裡那一句改成新文字，勾選框（[ ]／[x]）照舊。找不到回 'missing'，新文字已經有了回 'exists'。 */
+export function renameTodo(md: string, text: string, next: string): string | 'missing' | 'exists' {
+  const lines = md.split('\n');
+  const head = lines.findIndex((l) => /^## ✅ 待辦/.test(l));
+  if (head < 0) return 'missing';
+  let end = lines.findIndex((l, i) => i > head && /^## /.test(l));
+  if (end < 0) end = lines.length;
+  let at = -1;
+  for (let i = head + 1; i < end; i++) {
+    const m = lines[i].trim().match(/^- \[( |x)\] (.+)$/);
+    if (!m) continue;
+    const t = stripWikilinks(m[2].trim());
+    if (t === next && t !== text) return 'exists';
+    if (t === text && at < 0) at = i;
+  }
+  if (at < 0) return 'missing';
+  // 用函式換：新文字裡的 $ 不會被當成取代語法
+  lines[at] = lines[at].replace(/^(\s*- \[(?: |x)\] ).+$/, (_, pre: string) => pre + next);
   return lines.join('\n');
 }

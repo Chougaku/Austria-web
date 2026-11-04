@@ -1,12 +1,14 @@
 // 從儀表板編輯餐廳／景點／購物：只改使用者動過的欄位，其他照原樣留著——
 // vault 裡的檔可能是在 Obsidian 手寫的（交通、營業時間、評分……），不能整份重寫。
 import { ADDABLE, type AddableCategory } from './entity';
-import { IMAGE_FILE, fileName, oneLine } from './text';
+import { IMAGE_FILE, RATING, fileName, oneLine } from './text';
 
 /** 可以改的欄位；undefined＝沒動，空字串＝清掉。 */
 export type EntityChanges = {
   name?: string; type?: string; city?: string; location?: string; address?: string;
   ticket?: string; price?: string; summary?: string;
+  /** 評分 0–5；空字串＝拿掉評分 */
+  rating?: string;
 };
 export type EntityEdit = {
   id: string; category: AddableCategory; changes: EntityChanges;
@@ -18,7 +20,7 @@ export type EntityEdit = {
 
 const LIMITS: [keyof EntityChanges, string, number][] = [
   ['name', '名稱', 80], ['type', '類型', 40], ['city', '城市', 20], ['location', '位置', 60],
-  ['address', '地址', 160], ['ticket', '門票', 80], ['price', '價位', 40], ['summary', '簡介', 600],
+  ['address', '地址', 160], ['ticket', '門票', 80], ['price', '價位', 40], ['summary', '簡介', 600], ['rating', '評分', 3],
 ];
 export const MAX_IMAGES = 10;
 
@@ -37,11 +39,12 @@ export function parseEntityEdit(body: unknown): EntityEdit | string {
   const changes: EntityChanges = {};
   for (const [key, label, max] of LIMITS) {
     if (raw[key] === undefined) continue;
-    const v = oneLine(raw[key]);
+    const v = typeof raw[key] === 'number' ? String(raw[key]) : oneLine(raw[key]);
     if (v.length > max) return `${label}太長（最多 ${max} 字）`;
     changes[key] = v;
   }
   if (changes.name !== undefined && !fileName(changes.name)) return '名稱不能是空的或只有符號';
+  if (changes.rating && !RATING.test(changes.rating)) return '評分要是 0 到 5';
 
   const list = (v: unknown) => (Array.isArray(v) ? v : v === undefined ? [] : null);
   const removeImages = list(b.removeImages);
@@ -86,7 +89,7 @@ function setSummary(body: string, summary: string): string {
   return lines.join('\n');
 }
 
-const INFO_KEYS: [keyof EntityChanges, string][] = [['type', '類型'], ['price', '價位'], ['address', '地址'], ['location', '位置'], ['ticket', '門票']];
+const INFO_KEYS: [keyof EntityChanges, string][] = [['type', '類型'], ['rating', '評分'], ['price', '價位'], ['address', '地址'], ['location', '位置'], ['ticket', '門票']];
 
 /** `## 基本資訊` 底下的「- 欄位：值」：有動的才改，空字串就刪那行；其他行（評分、營業時間…）不動。 */
 function setInfo(body: string, changes: EntityChanges): string {

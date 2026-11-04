@@ -78,11 +78,17 @@ function main() {
     for (const f of fs.readdirSync(guidesDir).filter((f) => f.endsWith('.md'))) {
       try {
         const g = parseGuide(f, read(path.join(guidesDir, f)));
-        g.body = rewriteImageUrls(g.body, (src) => {
+        const urlOf = (src: string) => {
           const abs = resolveGuideImage(src, guidesDir, assetRoots);
           if (!abs) return null;
           return r2Base ? `${r2Base}/${guideImageKey(abs)}` : publishLocalImage(abs, publicDir);
-        });
+        };
+        // 跟地點一樣記下每張圖的 vault 寫法與網站網址（編輯攻略時拿掉圖片要用）
+        const images = extractImageSrcs(g.body)
+          .map((file) => ({ file, url: /^https?:/i.test(file) ? file : urlOf(file) }))
+          .filter((i): i is { file: string; url: string } => !!i.url);
+        if (images.length) g.images = images;
+        g.body = rewriteImageUrls(g.body, urlOf);
         guides.push(g);
       } catch (e) {
         console.warn(`⚠ 攻略略過 ${f}：${e instanceof Error ? e.message : e}`);

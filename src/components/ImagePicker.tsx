@@ -8,13 +8,15 @@ let seq = 0;
 
 /** 表單裡的「加入照片」：選圖後先在瀏覽器縮好、顯示縮圖，送出表單時才上傳。
     existing：編輯時原本就有的照片（排在前面，可以按 ✕ 拿掉）；max 算的是全部加起來。 */
-export default function ImagePicker({ images, onChange, max, disabled, existing = [], onRemoveExisting }: {
+export default function ImagePicker({ images, onChange, max, disabled, existing = [], onRemoveExisting, cover = true }: {
   images: PickedImage[];
   onChange: (next: PickedImage[]) => void;
   max: number;
   disabled?: boolean;
   existing?: ImageRef[];
   onRemoveExisting?: (file: string) => void;
+  /** 第一張標「封面」（地點才有封面；攻略的圖接在內文後面，不標） */
+  cover?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -42,7 +44,7 @@ export default function ImagePicker({ images, onChange, max, disabled, existing 
       {existing.map((img, i) => (
         <div key={img.file} className="img-thumb">
           <img src={img.url} alt={`原本的第 ${i + 1} 張`} />
-          {i === 0 && max > 1 && <span className="img-thumb-tag">封面</span>}
+          {cover && i === 0 && max > 1 && <span className="img-thumb-tag">封面</span>}
           <button type="button" aria-label={`拿掉原本的第 ${i + 1} 張`} disabled={disabled}
             onClick={() => onRemoveExisting?.(img.file)}>✕</button>
         </div>
@@ -52,7 +54,7 @@ export default function ImagePicker({ images, onChange, max, disabled, existing 
         return (
         <div key={img.id} className="img-thumb">
           <img src={img.thumb} alt={`第 ${i + 1} 張`} />
-          {i === 0 && max > 1 && <span className="img-thumb-tag">封面</span>}
+          {cover && i === 0 && max > 1 && <span className="img-thumb-tag">封面</span>}
           <button type="button" aria-label={`移除第 ${i + 1} 張`} disabled={disabled}
             onClick={() => onChange(images.filter((x) => x.id !== img.id))}>✕</button>
         </div>

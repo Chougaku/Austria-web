@@ -84,7 +84,7 @@ describe('Places 新增景點／購物', () => {
     await waitFor(() => expect(screen.getByRole('status').textContent).toContain('已新增「格洛麗埃特」'));
     expect(addEntity).toHaveBeenCalledWith({
       category: '景點', name: '格洛麗埃特', type: '', city: '維也納', location: '維也納 / 美泉宮',
-      address: '', ticket: '€5', price: '', summary: '', images: [],
+      address: '', ticket: '€5', price: '', summary: '', rating: '', images: [],
     });
     expect(screen.queryByRole('form', { name: '新增景點' })).toBeNull();
   });

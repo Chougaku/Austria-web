@@ -3,7 +3,7 @@
 import { ADDABLE, type AddableCategory } from './entity';
 import { GUIDE_DIR } from './guide';
 import { IMAGE_DIR } from './image';
-import { IMAGE_FILE, oneLine } from './text';
+import { IMAGE_FILE, oneLine, stripWikilinks } from './text';
 
 export type DeleteRequest =
   | { kind: 'entity'; id: string; category: AddableCategory; path: string }
@@ -46,10 +46,6 @@ export function uploadedImages(md: string): string[] {
   }
   return [...files];
 }
-
-/** 同 scripts/lib/text.ts 的 stripWikilinks：網站上看到的待辦文字是去掉 [[ ]] 之後的。 */
-const stripWikilinks = (s: string) =>
-  s.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, '$2').replace(/\[\[([^\]]+)\]\]/g, (_, p: string) => p.split('/').pop() ?? p);
 
 /** 從 `## ✅ 待辦` 段落拿掉那一句（不管勾了沒）；找不到回 null。 */
 export function removeTodo(md: string, text: string): string | null {

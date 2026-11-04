@@ -3,10 +3,11 @@ import { cors } from 'hono/cors';
 import { entityMarkdown, parseNewEntity } from './entity';
 import { GUIDE_DIR, guideMarkdown, parseNewGuide } from './guide';
 import { IMAGE_DIR, MAX_IMAGE_BYTES, imageFileName, sniffImage } from './image';
-import { IMAGE_FILE, bytesToBase64, fileName, taipeiDate } from './text';
-import { TODO_PATH, insertTodo, parseTodoText } from './todo';
+import { IMAGE_FILE, bytesToBase64, fileName, taipeiDate, todoKey } from './text';
+import { TODO_PATH, insertTodo, parseTodoText, renameTodo } from './todo';
 import { parseDelete, removeTodo, uploadedImages } from './remove';
 import { applyEntityEdit, editedId, parseEntityEdit } from './entity-edit';
+import { applyGuideEdit, editedGuideId, guidePath, parseGuideEdit, splitGuide } from './guide-edit';
 
 type Bindings = {
   DB: D1Database; DASH_TOKEN: string; DASH_PASSWORD: string;
@@ -360,19 +361,109 @@ app.post('/api/entity/update', async (c) => {
   if (r === 'conflict') return c.json({ error: 'sha conflict' }, 409);
   if (r !== true) return fail('git', r);
 
-  if (renamed) {
-    // 收藏記在 D1，key 跟著 id 走：改名後搬到新 id（失敗也不影響已經存好的 vault）
-    try {
-      const fav = await c.env.DB.prepare('SELECT value FROM state WHERE key = ?1').bind(`fav:${edit.id}`).first<{ value: string }>();
-      if (fav?.value === '1') {
-        const now = new Date().toISOString();
-        const upsert = 'INSERT INTO state (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3';
-        await c.env.DB.prepare(upsert).bind(`fav:${newId}`, '1', now).run();
-        await c.env.DB.prepare(upsert).bind(`fav:${edit.id}`, '0', now).run();
-      }
-    } catch (e) { console.log('[edit] fav move failed', e); }
-  }
+  // 收藏記在 D1，key 跟著 id 走：改名後搬到新 id
+  if (renamed) await moveState(c.env.DB, `fav:${edit.id}`, `fav:${newId}`);
   return c.json({ ok: true, id: newId });
+});
+
+/** D1 裡的勾選／收藏狀態搬到新 key（改名、改字後）。失敗只記 log——vault 已經存好了，不能因此回錯。 */
+async function moveState(db: D1Database, from: string, to: string): Promise<void> {
+  try {
+    const row = await db.prepare('SELECT value FROM state WHERE key = ?1').bind(from).first<{ value: string }>();
+    if (row?.value !== '1') return;
+    const now = new Date().toISOString();
+    const upsert = 'INSERT INTO state (key, value, updated_at) VALUES (?1, ?2, ?3) ON CONFLICT(key) DO UPDATE SET value = ?2, updated_at = ?3';
+    await db.prepare(upsert).bind(to, '1', now).run();
+    await db.prepare(upsert).bind(from, '0', now).run();
+  } catch (e) { console.log('[state] move failed', from, to, e); }
+}
+
+// 讀一篇攻略的原始內容（編輯表單用）：作者、原文網址、內文（不含上傳的圖）、上傳的圖。
+// 網站上的攻略是建置後的版本（wikilink 拿掉了、圖換成網站網址），拿那份去改會把 vault 改壞，所以從 vault 讀。
+// GET 不用登入（vault 本來就公開）。
+app.get('/api/guide', async (c) => {
+  const id = c.req.query('id') ?? '';
+  if (!id || /[\\/]/.test(id) || id.includes('..')) return c.json({ error: 'invalid guide', detail: '標題不對' }, 400);
+  const { api, ghHeaders } = ghContents(c.env, guidePath(id));
+  const res = await fetch(`${api}?ref=${c.env.GH_BRANCH}`, { headers: ghHeaders });
+  if (res.status === 404) return c.json({ error: 'missing' }, 404);
+  if (!res.ok) {
+    const detail = await res.text();
+    return c.json(ghError('github get failed', res.status, detail), 502);
+  }
+  return c.json({ id, ...splitGuide(fromBase64((await res.json<{ content: string }>()).content)) });
+});
+
+// 編輯攻略：改標題就換檔名（同名已存在回 409），作者／網址寫 frontmatter，內文整段換，
+// 上傳的圖照「原本扣掉拿掉的＋新的」接在最後，拿掉的圖從 assets/ 刪。全部一筆 commit。
+app.post('/api/guide/update', async (c) => {
+  const edit = parseGuideEdit(await c.req.json().catch(() => null));
+  if (typeof edit === 'string') return c.json({ error: 'invalid edit', detail: edit }, 400);
+  const fail = async (tag: string, res: Response) => {
+    const detail = await res.text();
+    console.log(`[guide edit] ${tag}`, res.status, detail);
+    return c.json(ghError(`github ${tag} failed`, res.status, detail), 502);
+  };
+  const base = await gitHead(c.env);
+  if (base instanceof Response) return fail('git', base);
+  const oldPath = guidePath(edit.id);
+  const { api, ghHeaders } = ghContents(c.env, oldPath);
+  const getRes = await fetch(`${api}?ref=${base.head}`, { headers: ghHeaders });
+  if (getRes.status === 404) return c.json({ error: 'missing' }, 404);
+  if (!getRes.ok) return fail('get', getRes);
+  const result = applyGuideEdit(fromBase64((await getRes.json<{ content: string }>()).content), edit);
+  if ('error' in result) return c.json({ error: 'invalid edit', detail: result.error }, 400);
+
+  const newId = editedGuideId(edit);
+  const renamed = newId !== edit.id;
+  if (renamed) {
+    const exists = await fetch(`${ghContents(c.env, guidePath(newId)).api}?ref=${base.head}`, { headers: ghHeaders });
+    if (exists.ok) return c.json({ error: 'exists', id: newId }, 409);
+    if (exists.status !== 404) return fail('get', exists);
+  }
+  const gone = await existingAssets(c.env, edit.removeImages.map((f) => `${IMAGE_DIR}/${f}`), base.head);
+  const r = await commitTree(c.env, base, [
+    { path: guidePath(newId), content: result.md },
+    ...(renamed ? [{ path: oldPath, remove: true as const }] : []),
+    ...gone.map((path) => ({ path, remove: true as const })),
+  ], `chore(guide): 從儀表板編輯攻略「${newId}」`);
+  if (r === 'conflict') return c.json({ error: 'sha conflict' }, 409);
+  if (r !== true) return fail('git', r);
+  // 典藏記在 D1（guide:<id>），改名後跟著搬
+  if (renamed) await moveState(c.env.DB, `guide:${edit.id}`, `guide:${newId}`);
+  return c.json({ ok: true, id: newId });
+});
+
+// 改一句待辦的文字（勾選狀態照舊；D1 的勾選記錄 key 是文字雜湊，跟著搬）。
+app.post('/api/todo/update', async (c) => {
+  const body = await c.req.json<{ text?: unknown; next?: unknown }>().catch(() => null);
+  const text = parseTodoText({ text: body?.text });
+  const next = parseTodoText({ text: body?.next });
+  if (typeof text !== 'string') return c.json({ error: 'invalid todo', detail: text.error }, 400);
+  if (typeof next !== 'string') return c.json({ error: 'invalid todo', detail: next.error }, 400);
+  if (text === next) return c.json({ ok: true });
+  const { api, ghHeaders } = ghContents(c.env, TODO_PATH);
+  const getRes = await fetch(`${api}?ref=${c.env.GH_BRANCH}`, { headers: ghHeaders });
+  if (!getRes.ok) {
+    const detail = await getRes.text();
+    return c.json(ghError('github get failed', getRes.status, detail), 502);
+  }
+  const file = await getRes.json<{ content: string; sha: string }>();
+  const out = renameTodo(fromBase64(file.content), text, next);
+  if (out === 'missing') return c.json({ error: 'missing' }, 404);
+  if (out === 'exists') return c.json({ error: 'exists' }, 409);
+  const putRes = await fetch(api, {
+    method: 'PUT',
+    headers: { ...ghHeaders, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: `chore(todo): 從儀表板修改待辦「${next}」`, content: toBase64(out), sha: file.sha, branch: c.env.GH_BRANCH }),
+  });
+  if (putRes.status === 409) return c.json({ error: 'sha conflict' }, 409);
+  if (!putRes.ok) {
+    const detail = await putRes.text();
+    return c.json(ghError('github put failed', putRes.status, detail), 502);
+  }
+  await moveState(c.env.DB, todoKey(text), todoKey(next));
+  return c.json({ ok: true });
 });
 
 export default app;

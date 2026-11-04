@@ -11,6 +11,7 @@ import CityChips from '../components/CityChips';
 import { inCity, type CityFilter } from '../lib/trip';
 import AddPlace from '../components/AddPlace';
 import Cover from '../components/Cover';
+import { Stars } from '../components/Stars';
 import EntityActions from '../components/EntityActions';
 import EntityDetail from '../components/EntityDetail';
 import { onCardClick } from '../lib/card-click';
@@ -79,6 +80,7 @@ export default function Places() {
 <HitText segments={makeSegments(p.name, tokens)} />
 </button>
                         </div>
+                        <Stars value={p.rating} />
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7, alignItems: 'center' }}>
                           {p.fields['類型'] && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--navy)', border: '1px solid rgba(30,53,92,.4)', borderRadius: 4, padding: '1.5px 7px' }}>{p.fields['類型']}</span>}
                           <span style={{ fontSize: 12, color: 'var(--brown)' }}>
@@ -119,7 +121,7 @@ export default function Places() {
 <HitText segments={makeSegments(p.name, tokens)} />
 </button>
                       </span>
-                      {p.rating != null && <span style={{ fontSize: 11.5, color: 'var(--red)', fontWeight: 700 }}>★ {p.rating.toFixed(1)}</span>}
+                      <Stars value={p.rating} showValue />
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 7, alignItems: 'center' }}>
                       {p.area && <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--navy)', border: '1px solid rgba(30,53,92,.4)', borderRadius: 4, padding: '1.5px 7px' }}>{p.area}</span>}

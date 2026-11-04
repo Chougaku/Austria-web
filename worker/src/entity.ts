@@ -1,6 +1,6 @@
 // 從儀表板新增餐廳／景點／購物：驗證前端送來的欄位，產生跟 vault 範例檔同格式的 markdown。
 // 格式要讓 scripts/lib/parse-entity.ts 讀得懂：frontmatter 的 title、`## 基本資訊` 底下的「- 欄位：值」。
-import { fileName, imageEmbeds, oneLine, parseImageList, tooLong } from './text';
+import { RATING, fileName, imageEmbeds, oneLine, parseImageList, tooLong } from './text';
 
 /** 網站上能新增的分類；交通、住宿等其他分類還是直接在 vault 寫。 */
 export const ADDABLE = ['餐廳', '景點', '購物'] as const;
@@ -22,6 +22,8 @@ export type NewEntity = {
   price: string;
   /** 一段簡介，卡片上顯示的那段。 */
   summary: string;
+  /** 評分 1–5（空字串＝沒評） */
+  rating: string;
   /** 已上傳到 vault assets/ 的圖片檔名；第一張是卡片封面。 */
   images: string[];
 };
@@ -29,6 +31,7 @@ export type NewEntity = {
 export const MAX_ENTITY_IMAGES = 10;
 
 const LIMITS: [Exclude<keyof NewEntity, 'images'>, string, number][] = [
+  ['rating', '評分', 3],
   ['name', '名稱', 80], ['type', '類型', 40], ['city', '城市', 20], ['location', '位置', 60],
   ['address', '地址', 160], ['ticket', '門票', 80], ['price', '價位', 40], ['summary', '簡介', 600],
 ];
@@ -51,9 +54,11 @@ export function parseNewEntity(body: unknown): NewEntity | string {
     ticket: category === '景點' ? oneLine(b.ticket) : '',
     price: category === '餐廳' ? oneLine(b.price) : '',
     summary: oneLine(b.summary),
+    rating: typeof b.rating === 'number' ? String(b.rating) : oneLine(b.rating),
     images: [],
   };
   if (!e.name) return '請填名稱';
+  if (e.rating && !RATING.test(e.rating)) return '評分要是 0 到 5';
   const images = parseImageList(b.images, MAX_ENTITY_IMAGES);
   if (typeof images === 'string') return images;
   e.images = images;
@@ -66,7 +71,7 @@ export function parseNewEntity(body: unknown): NewEntity | string {
 
 /** 跟 vault 的範例檔（wiki/entities/景點/美泉宮.md）同一個格式。 */
 export function entityMarkdown(e: NewEntity, today: string): string {
-  const info = ([['類型', e.type], ['價位', e.price], ['地址', e.address], ['位置', e.location], ['門票', e.ticket]] as const)
+  const info = ([['類型', e.type], ['評分', e.rating], ['價位', e.price], ['地址', e.address], ['位置', e.location], ['門票', e.ticket]] as const)
     .filter(([, v]) => v)
     .map(([k, v]) => `- ${k}：${v}`);
   // 開頭是 # 的話解析器會當成標題，簡介就不見了

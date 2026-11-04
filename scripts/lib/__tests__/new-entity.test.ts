@@ -7,7 +7,7 @@ import { guideMarkdown } from '../../../worker/src/guide';
 import { insertTodo } from '../../../worker/src/todo';
 
 // 網站新增的內容由 Worker 寫成 markdown，下次建置時要被同一套解析器讀進來。
-const blank: Omit<NewEntity, 'category' | 'name'> = { type: '', city: '', location: '', address: '', ticket: '', price: '', summary: '', images: [] };
+const blank: Omit<NewEntity, 'category' | 'name'> = { type: '', city: '', location: '', address: '', ticket: '', price: '', summary: '', rating: '', images: [] };
 
 describe('從儀表板新增的檔案讀得回來', () => {
   it('景點：欄位、簡介、區域都對得上', () => {
@@ -76,5 +76,28 @@ describe('從儀表板編輯過的檔案讀得回來', () => {
     expect(e.area).toBe('普拉特');
     expect(e.body).toContain('![](20261029-bbbbbbbb.jpg)');
     expect(e.body).not.toContain('aaaaaaaa');
+  });
+});
+
+describe('攻略圖片與編輯', () => {
+  it('網站加的圖片（![[檔名]]）解析成圖片，不會被當成連結拆掉', () => {
+    const md = guideMarkdown({ title: 't', author: '', url: '', body: '內文', images: ['20261104-aaaaaaaa.jpg'] }, '2026-11-04');
+    const g = parseGuide('t.md', md);
+    expect(g.body).toContain('![](20261104-aaaaaaaa.jpg)');
+    expect(g.body).not.toContain('!20261104');
+  });
+
+  it('編輯過的攻略讀得回來：作者、網址、內文、圖片都對', async () => {
+    const { applyGuideEdit } = await import('../../../worker/src/guide-edit');
+    const md = guideMarkdown({ title: 't', author: '小明', url: 'https://a.example', body: '舊內文', images: ['20261104-aaaaaaaa.jpg'] }, '2026-11-04');
+    const r = applyGuideEdit(md, { changes: { body: '新內文', author: '小華' }, removeImages: [], addImages: ['20261104-bbbbbbbb.jpg'] }) as { md: string };
+    const g = parseGuide('t.md', r.md);
+    expect(g).toMatchObject({ source: '小華', sourceUrl: 'https://a.example' });
+    expect(g.body).toBe('新內文\n\n![](20261104-aaaaaaaa.jpg)\n![](20261104-bbbbbbbb.jpg)');
+  });
+
+  it('評分寫進 vault 後解析成數字', () => {
+    const e = parseEntity('餐廳', 'x.md', entityMarkdown({ ...blank, category: '餐廳', name: 'x', rating: '4' }, '2026-11-04'));
+    expect(e.rating).toBe(4);
   });
 });
